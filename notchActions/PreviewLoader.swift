@@ -10,34 +10,68 @@ import AppKit
 import QuickLookThumbnailing
 import UniformTypeIdentifiers
 
+// MARK: - PreviewRow
+
+struct PreviewRow: Identifiable, Equatable {
+    let id = UUID()
+    let label: String
+    let value: String
+}
+
 // MARK: - PreviewInfo
 
-struct PreviewInfo: Equatable {
-    var image: NSImage?
+struct PreviewInfo: Identifiable, Equatable {
+    let id = UUID()
+    var icon: NSImage?
+    var thumbnail: NSImage?
     var name: String
-    var detail: String
     var textSnippet: String?
+    var rows: [PreviewRow]
 }
 
 // MARK: - PreviewLoader
 
-/// builds a lightweight hover preview for an item: a Quick Look thumbnail (image/pdf/etc.), the
-/// first lines for text & markdown, plus name + type + size; all off the main work, never blocking
-/// (spec §20, §37.9, §42).
+/// builds a hover preview: a Quick Look thumbnail for files, a scrollable snippet for text/markdown,
+/// or an info table for folders; plus name + kind + size/items + modified date (spec §20, §37.9, §42).
 @MainActor
 enum PreviewLoader {
-    static func load(url: URL, kind: ShelfItemKind, name: String) async -> PreviewInfo {
-        let detail = metaDescription(for: url)
-        let snippet = (kind == .markdownNote || isText(url)) ? textSnippet(for: url) : nil
-        let image = await thumbnail(for: url)
-        return PreviewInfo(image: image, name: name, detail: detail, textSnippet: snippet)
+    static func load(url: URL, kind: ShelfItemKind, name: String, icon: NSImage) async -> PreviewInfo {
+        let values = try? url.resourceValues(forKeys: [
+            .fileSizeKey, .contentTypeKey, .isDirectoryKey, .contentModificationDateKey
+        ])
+        let isDirectory = values?.isDirectory ?? (kind == .folder)
+
+        var rows: [PreviewRow] = [
+            PreviewRow(label: "Kind", value: values?.contentType?.localizedDescription ?? (isDirectory
+                    ? "Folder"
+                    : "File"))
+        ]
+        if isDirectory {
+            if let count = try? FileManager.default.contentsOfDirectory(atPath: url.path(percentEncoded: false)).count {
+                rows.append(PreviewRow(label: "Items", value: "\(count)"))
+            }
+        } else if let size = values?.fileSize {
+            rows.append(PreviewRow(
+                label: "Size",
+                value: ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
+            ))
+        }
+        if let modified = values?.contentModificationDate {
+            rows.append(PreviewRow(label: "Modified", value: modified.formatted(date: .abbreviated, time: .shortened)))
+        }
+
+        let isText = values?.contentType?.conforms(to: .text) ?? false
+        let snippet = (kind == .markdownNote || isText) ? textSnippet(for: url) : nil
+        // folders show the info table + small icon; text shows a scrollable snippet; else a thumbnail.
+        let thumbnail = (isDirectory || snippet != nil) ? nil : await makeThumbnail(for: url)
+        return PreviewInfo(icon: icon, thumbnail: thumbnail, name: name, textSnippet: snippet, rows: rows)
     }
 
-    private static func thumbnail(for url: URL) async -> NSImage? {
+    private static func makeThumbnail(for url: URL) async -> NSImage? {
         let scale = NSScreen.main?.backingScaleFactor ?? 2
         let request = QLThumbnailGenerator.Request(
             fileAt: url,
-            size: CGSize(width: 200, height: 150),
+            size: CGSize(width: 360, height: 280),
             scale: scale,
             representationTypes: .all
         )
@@ -48,27 +82,8 @@ enum PreviewLoader {
         }
     }
 
-    private static func metaDescription(for url: URL) -> String {
-        let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentTypeKey, .isDirectoryKey])
-        var parts: [String] = []
-        if let type = values?.contentType?.localizedDescription {
-            parts.append(type)
-        }
-        if values?.isDirectory != true, let size = values?.fileSize {
-            parts.append(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
-        }
-        return parts.joined(separator: " · ")
-    }
-
-    private static func isText(_ url: URL) -> Bool {
-        let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType
-        return type?.conforms(to: .text) ?? false
-    }
-
     private static func textSnippet(for url: URL) -> String? {
         guard let data = try? Data(contentsOf: url, options: [.mappedIfSafe]) else { return nil }
-        guard let text = String(data: data.prefix(2_000), encoding: .utf8) else { return nil }
-        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).prefix(6)
-        return lines.joined(separator: "\n")
+        return String(data: data.prefix(8_000), encoding: .utf8)
     }
 }

@@ -13,7 +13,7 @@ import UniformTypeIdentifiers
 // MARK: - SlotView
 
 /// one shelf slot: empty (plus control) or occupied (icon + label + remove), with hover, the
-/// duplicate-flash ring, and the drag-over highlight (spec §10, §14, §16, §41, §43).
+/// duplicate-flash ring, the drag-over highlight, and a hover preview (spec §10, §14, §16, §20, §41, §43).
 struct SlotView: View {
     let index: Int
     let store: ShelfStore
@@ -37,7 +37,8 @@ struct SlotView: View {
                     onOpen: { ShelfActions.open(item, store: store) },
                     onRemove: { store.remove(slot: index) },
                     onReveal: { ShelfActions.reveal(item, store: store) },
-                    onCopyPath: { ShelfActions.copyPath(item, store: store) }
+                    onCopyPath: { ShelfActions.copyPath(item, store: store) },
+                    setPreviewing: { uiState.isPreviewing = $0 }
                 )
             } else {
                 EmptySlotView(isHovering: isHovering) {
@@ -108,10 +109,12 @@ private struct OccupiedSlotView: View {
     let onRemove: () -> Void
     let onReveal: () -> Void
     let onCopyPath: () -> Void
+    let setPreviewing: (Bool) -> Void
 
-    @State private var previewVisible = false
     @State private var previewInfo: PreviewInfo?
-    @State private var previewTask: Task<Void, Never>?
+    @State private var previewHovered = false
+    @State private var loadTask: Task<Void, Never>?
+    @State private var dismissTask: Task<Void, Never>?
 
     var body: some View {
         Button(action: onOpen) {
@@ -159,23 +162,47 @@ private struct OccupiedSlotView: View {
                 .accessibilityLabel("Remove \(item.displayName) from shelf")
             }
         }
-        .popover(isPresented: $previewVisible, arrowEdge: .bottom) {
-            if let previewInfo {
-                ShelfPreviewView(info: previewInfo)
-            }
+        .popover(item: $previewInfo, arrowEdge: .bottom) { info in
+            ShelfPreviewView(info: info)
+                .onHover { hovered in
+                    previewHovered = hovered
+                    if hovered { dismissTask?.cancel() } else { scheduleDismiss() }
+                }
         }
         .onChange(of: isHovering) { _, hovering in
-            previewTask?.cancel()
-            guard hovering, !broken, let url else {
-                previewVisible = false
-                return
+            if hovering, !broken, url != nil {
+                startPreviewLoad()
+            } else {
+                loadTask?.cancel()
+                scheduleDismiss()
             }
-            previewTask = Task {
-                try? await Task.sleep(for: .milliseconds(500))
-                guard !Task.isCancelled else { return }
-                previewInfo = await PreviewLoader.load(url: url, kind: item.kind, name: item.displayName)
-                previewVisible = true
-            }
+        }
+    }
+
+    /// loads the preview after a short hover delay, then presents it (item-based popover, so it never
+    /// flashes an empty popover before the content is ready) (spec §20).
+    private func startPreviewLoad() {
+        dismissTask?.cancel()
+        loadTask?.cancel()
+        loadTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled, let url else { return }
+            let icon = IconProvider.icon(for: url, broken: false, size: 28)
+            let info = await PreviewLoader.load(url: url, kind: item.kind, name: item.displayName, icon: icon)
+            guard !Task.isCancelled else { return }
+            previewInfo = info
+            setPreviewing(true)
+        }
+    }
+
+    /// dismiss after a short grace so the cursor can travel from the slot onto the (scrollable) preview.
+    private func scheduleDismiss() {
+        dismissTask?.cancel()
+        dismissTask = Task {
+            try? await Task.sleep(for: .milliseconds(220))
+            guard !Task.isCancelled else { return }
+            previewInfo = nil
+            setPreviewing(false)
         }
     }
 

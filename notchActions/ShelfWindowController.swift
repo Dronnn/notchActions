@@ -26,6 +26,7 @@ final class ShelfWindowController {
     private var screenObserver: NSObjectProtocol?
     private var hoverMonitorTask: Task<Void, Never>?
     private var hideTask: Task<Void, Never>?
+    private var keyMonitor: Any?
 
     private static let collapseDelay: Duration = .milliseconds(350)
     private static let hideAfterCollapse: Duration = .milliseconds(420)
@@ -99,9 +100,33 @@ final class ShelfWindowController {
     private func expand() {
         hideTask?.cancel()
         positionPanel()
-        panel.orderFrontRegardless()
+        // become key (without activating the app) so cmd-V reaches us while merely hovering.
+        panel.makeKeyAndOrderFront(nil)
         uiState.isExpanded = true
         startHoverMonitor()
+        installKeyMonitor()
+    }
+
+    /// capture cmd-V while the shelf is open (even on hover, no click) to paste the clipboard as a
+    /// markdown note into a free slot (spec §18, §28).
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard
+                let self,
+                event.modifierFlags.contains(.command),
+                event.charactersIgnoringModifiers == "v"
+            else { return event }
+            ShelfActions.pasteClipboard(store: store, uiState: uiState)
+            return nil
+        }
+    }
+
+    private func removeKeyMonitor() {
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+        }
+        keyMonitor = nil
     }
 
     /// keep the shelf open while the live cursor is over the panel (or the notch); collapse once it
@@ -131,12 +156,13 @@ final class ShelfWindowController {
     private func cursorIsOverShelf() -> Bool {
         let cursor = NSEvent.mouseLocation
         let panelArea = panel.frame.insetBy(dx: -Self.keepOpenMargin, dy: -Self.keepOpenMargin)
-        return panelArea.contains(cursor) || triggerWindow.frame.contains(cursor)
+        return panelArea.contains(cursor) || triggerWindow.frame.contains(cursor) || uiState.isPreviewing
     }
 
     private func collapseNow() {
         hoverMonitorTask?.cancel()
         hoverMonitorTask = nil
+        removeKeyMonitor()
         uiState.isExpanded = false
         hideTask?.cancel()
         // order the (now invisible) panel out after the collapse animation so it stops covering

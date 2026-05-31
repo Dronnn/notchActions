@@ -10,36 +10,55 @@ import SwiftUI
 
 // MARK: - ShelfPreviewView
 
-/// the small hover-preview popover content: a thumbnail or text snippet, the name, and type/size
-/// (spec §20). kept compact and non-interactive.
+/// the hover-preview popover: a thumbnail, a scrollable text snippet, or a folder info table, with a
+/// small icon + name header (spec §20). text is scrollable so it can be read in place.
 struct ShelfPreviewView: View {
     let info: PreviewInfo
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let snippet = info.textSnippet, !snippet.isEmpty {
-                Text(snippet)
-                    .font(.caption)
-                    .lineLimit(6)
-                    .frame(maxWidth: 240, alignment: .leading)
-            } else if let image = info.image {
-                Image(nsImage: image)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                if let icon = info.icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .frame(width: 28, height: 28)
+                }
+                Text(info.name)
+                    .font(.headline)
+                    .lineLimit(1)
+            }
+            if let thumbnail = info.thumbnail {
+                Image(nsImage: thumbnail)
                     .resizable()
                     .scaledToFit()
-                    .frame(maxWidth: 200, maxHeight: 150)
-                    .clipShape(.rect(cornerRadius: 6))
+                    .frame(maxWidth: 360, maxHeight: 280)
+                    .clipShape(.rect(cornerRadius: 8))
+            } else if let snippet = info.textSnippet, !snippet.isEmpty {
+                ScrollView {
+                    Text(snippet)
+                        .font(.callout)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: 380, maxHeight: 280)
             }
-            Text(info.name)
-                .font(.caption)
-                .bold()
-                .lineLimit(1)
-            if !info.detail.isEmpty {
-                Text(info.detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+            if !info.rows.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(info.rows) { row in
+                        HStack(spacing: 8) {
+                            Text(row.label)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 72, alignment: .leading)
+                            Text(row.value)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                        .font(.callout)
+                    }
+                }
             }
         }
-        .padding(12)
-        .frame(maxWidth: 264)
+        .padding(16)
+        .frame(minWidth: 300, maxWidth: 440)
     }
 }

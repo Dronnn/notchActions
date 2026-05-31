@@ -20,6 +20,7 @@ final class ShelfUIState {
     var hoveredSlot: Int?
     var highlightSlot: Int?
     var fullShelfToast = false
+    var isPreviewing = false
 
     private static let transientDuration: Duration = .milliseconds(1_200)
 
