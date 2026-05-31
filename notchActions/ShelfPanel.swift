@@ -25,6 +25,8 @@ final class ShelfPanel: NSPanel {
         level = .statusBar
         isOpaque = false
         backgroundColor = .clear
+        // force a dark appearance so the gear menu (and semantic colors) stay legible on the black panel.
+        appearance = NSAppearance(named: .darkAqua)
         hasShadow = false // shadow is drawn by the SwiftUI content shape
         hidesOnDeactivate = false
         isMovableByWindowBackground = false

@@ -112,9 +112,11 @@ private struct ShelfCenterControls: View {
                 Divider()
                 Button("Quit notchActions") { ShelfActions.quit() }
             } label: {
-                Image(systemName: "gearshape")
+                Image(systemName: "gearshape.fill")
                     .font(.title3)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(.white)
+                    .padding(6)
+                    .background(Circle().fill(.white.opacity(0.16)))
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
