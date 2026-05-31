@@ -26,6 +26,8 @@ The app is **fully hidden** — no Dock icon and no menu-bar item. Move the curs
 - Create a Markdown file from clipboard text, stored locally and added to the shelf
 - Native Finder/Dock icons; graceful broken-item state when a file is moved or deleted
 - Launch at login (toggle in the gear menu)
+- Hover preview: a Quick Look thumbnail (or first text lines) with name and type/size
+- The shelf unrolls from the notch (grows from a notch-sized footprint to full)
 
 ## Requirements
 

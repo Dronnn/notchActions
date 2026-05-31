@@ -109,6 +109,10 @@ private struct OccupiedSlotView: View {
     let onReveal: () -> Void
     let onCopyPath: () -> Void
 
+    @State private var previewVisible = false
+    @State private var previewInfo: PreviewInfo?
+    @State private var previewTask: Task<Void, Never>?
+
     var body: some View {
         Button(action: onOpen) {
             VStack(spacing: 4) {
@@ -153,6 +157,24 @@ private struct OccupiedSlotView: View {
                 .buttonStyle(.plain)
                 .padding(5)
                 .accessibilityLabel("Remove \(item.displayName) from shelf")
+            }
+        }
+        .popover(isPresented: $previewVisible, arrowEdge: .bottom) {
+            if let previewInfo {
+                ShelfPreviewView(info: previewInfo)
+            }
+        }
+        .onChange(of: isHovering) { _, hovering in
+            previewTask?.cancel()
+            guard hovering, !broken, let url else {
+                previewVisible = false
+                return
+            }
+            previewTask = Task {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled else { return }
+                previewInfo = await PreviewLoader.load(url: url, kind: item.kind, name: item.displayName)
+                previewVisible = true
             }
         }
     }

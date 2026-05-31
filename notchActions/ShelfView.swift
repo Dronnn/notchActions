@@ -19,12 +19,17 @@ struct ShelfView: View {
 
     var body: some View {
         ShelfPanelContent(store: store, uiState: uiState, onHide: onHide)
-            .frame(height: uiState.isExpanded ? ShelfLayout.panelSize.height : 0, alignment: .top)
-            .scaleEffect(uiState.isExpanded ? 1 : 0.92, anchor: .top)
-            .opacity(uiState.isExpanded ? 1 : 0)
+            // grow out from a notch-sized footprint at top-center to the full shelf, so it reads
+            // like it unrolls from the notch (spec §9).
+            .frame(
+                width: uiState.isExpanded ? ShelfLayout.panelSize.width : ShelfLayout.collapsedSize.width,
+                height: uiState.isExpanded ? ShelfLayout.panelSize.height : ShelfLayout.collapsedSize.height,
+                alignment: .top
+            )
             .clipped()
+            .opacity(uiState.isExpanded ? 1 : 0)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .animation(.spring(response: 0.32, dampingFraction: 0.82), value: uiState.isExpanded)
+            .animation(.spring(response: 0.34, dampingFraction: 0.82), value: uiState.isExpanded)
     }
 }
 

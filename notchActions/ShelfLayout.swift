@@ -21,6 +21,9 @@ enum ShelfLayout {
     static let padding: CGFloat = 12
     static let panelCornerRadius: CGFloat = 24
 
+    /// the expand animation grows the content out from roughly this notch-sized footprint at top-center.
+    static let collapsedSize = CGSize(width: 180, height: 30)
+
     /// the bottom row is the widest band: left-column bottom + four bottom slots + right-column bottom.
     static let bottomRowCount = 6
 
