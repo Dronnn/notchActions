@@ -16,3 +16,6 @@ xcuserdata/
 # CocoaPods / Carthage (if ever used)
 Pods/
 Carthage/Build/
+
+# Internal docs (spec + plan)
+docs/
