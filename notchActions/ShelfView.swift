@@ -42,7 +42,7 @@ private struct ShelfPanelContent: View {
 
     /// U fill order (locked: 2 left down, 4 bottom across, 2 right down). the top row carries the
     /// corner slots 0 and 6 with the notch-facing center open; the bottom row carries 1,2,3,4,5,7.
-    private let bottomRow = [1, 2, 3, 4, 5, 7]
+    private let bottomRow = [1, 2, 3, 4]
 
     private var shelfShape: UnevenRoundedRectangle {
         .rect(
@@ -58,7 +58,7 @@ private struct ShelfPanelContent: View {
             HStack(spacing: ShelfLayout.slotGap) {
                 SlotView(index: 0, store: store, uiState: uiState)
                 Spacer(minLength: ShelfLayout.slotGap)
-                SlotView(index: 6, store: store, uiState: uiState)
+                SlotView(index: 5, store: store, uiState: uiState)
             }
             HStack(spacing: ShelfLayout.slotGap) {
                 ForEach(bottomRow, id: \.self) { index in

@@ -27,7 +27,7 @@ final class ShelfStore {
 
     // MARK: - Constants
 
-    static let slotCount = 8
+    static let slotCount = 6
 
     // MARK: - State
 

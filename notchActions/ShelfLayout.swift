@@ -28,7 +28,7 @@ enum ShelfLayout {
     static let collapsedSize = CGSize(width: 180, height: 30)
 
     /// the bottom row is the widest band: left-column bottom + four bottom slots + right-column bottom.
-    static let bottomRowCount = 6
+    static let bottomRowCount = 4
 
     static var contentWidth: CGFloat {
         CGFloat(bottomRowCount) * slotSize + CGFloat(bottomRowCount - 1) * slotGap

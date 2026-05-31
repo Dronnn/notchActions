@@ -7,7 +7,7 @@ The app is **fully hidden** — no Dock icon and no menu-bar item. Move the curs
 ## How it works
 
 - **Summon it:** move the cursor to the notch, or start dragging a file toward the notch — the shelf drops down. It collapses again shortly after the cursor leaves.
-- **Layout:** eight fixed slots wrap the notch in a U (two down the left, four across the bottom, two down the right), leaving the notch-facing center open.
+- **Layout:** six fixed slots wrap the notch in a tight U (two top corners + four across the bottom), with the gear control in the center just below the notch.
 - **Add:** click a slot's **+** for a native open panel, or drag files / folders / apps straight from Finder onto a slot.
 - **Open:** single-click an item to open the file, launch the app, or open the folder in Finder.
 - **Drag out:** drag an item from the shelf into Finder or another app — it lands as the real file and stays on the shelf.
