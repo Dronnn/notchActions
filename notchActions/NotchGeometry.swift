@@ -22,13 +22,16 @@ struct NotchMetrics {
 /// notch detection and panel / trigger frame math (spec §5, §6, §7).
 /// v1 targets the main display; the screen parameter keeps multi-display support open (§5.3).
 enum NotchGeometry {
-    /// expanded panel size (spec §6; locked 440 x 150).
-    static var panelSize: CGSize {
-        ShelfLayout.panelSize
-    }
-
     private static let virtualNotchSize = CGSize(width: 200, height: 32)
     private static let fallbackNotchWidth: CGFloat = 200
+
+    /// physical notch width: the gap between the two auxiliary menu-bar areas, falling back to a
+    /// centered ~200pt span when the system does not report them; 0 on a Mac without a physical
+    /// notch, so the grid skips nothing there (spec §10.5.1).
+    static func notchWidth(for screen: NSScreen) -> CGFloat {
+        guard screen.safeAreaInsets.top > 0 else { return 0 }
+        return realNotchWidth(for: screen)
+    }
 
     /// builds metrics for a screen: a real notch when there is a top safe-area inset,
     /// otherwise a virtual notch centered at the top edge (spec §5.1, §5.2).
@@ -58,9 +61,10 @@ enum NotchGeometry {
         metrics.notchRect
     }
 
-    /// expanded panel: fixed size, centered on the notch, top flush with the screen top and
-    /// growing downward, clamped horizontally to the visible frame (spec §6, §9).
-    static func expandedPanelRect(_ metrics: NotchMetrics) -> CGRect {
+    /// expanded panel: grid-sized, centered on the notch so the top-row gap aligns with the physical
+    /// notch, top flush with the screen top and growing downward, clamped horizontally to the visible
+    /// frame (spec §6, §9, §10.5.2).
+    static func expandedPanelRect(_ metrics: NotchMetrics, panelSize: CGSize) -> CGRect {
         let frame = metrics.screen.frame
         let visible = metrics.screen.visibleFrame
         let originY = frame.maxY - panelSize.height
@@ -71,20 +75,29 @@ enum NotchGeometry {
 
     // MARK: - Helpers
 
-    /// notch width comes from the gap between the two auxiliary menu-bar areas; falls back to a
-    /// centered ~200pt span if the system does not report them (spec §5.1).
     private static func realNotchRect(for screen: NSScreen, height: CGFloat) -> CGRect {
         let frame = screen.frame
         let topY = frame.maxY - height
         if
             let left = screen.auxiliaryTopLeftArea,
-            let right = screen.auxiliaryTopRightArea
+            let right = screen.auxiliaryTopRightArea,
+            right.minX - left.maxX > 0
         {
-            let notchWidth = right.minX - left.maxX
-            if notchWidth > 0 {
-                return CGRect(x: left.maxX, y: topY, width: notchWidth, height: height)
-            }
+            return CGRect(x: left.maxX, y: topY, width: right.minX - left.maxX, height: height)
         }
         return CGRect(x: frame.midX - fallbackNotchWidth / 2, y: topY, width: fallbackNotchWidth, height: height)
+    }
+
+    /// notch width from the gap between the two auxiliary menu-bar areas; falls back to a centered
+    /// ~200pt span if the system does not report them (spec §5.1).
+    private static func realNotchWidth(for screen: NSScreen) -> CGFloat {
+        if
+            let left = screen.auxiliaryTopLeftArea,
+            let right = screen.auxiliaryTopRightArea,
+            right.minX - left.maxX > 0
+        {
+            return right.minX - left.maxX
+        }
+        return fallbackNotchWidth
     }
 }

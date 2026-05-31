@@ -23,28 +23,38 @@ struct SlotView: View {
 
     var body: some View {
         let item = store.item(at: index)
-        let url = item.flatMap { store.resolvedURL(for: $0) }
-        let broken = item != nil && url == nil
+        let resolvedURLs = item.map { store.resolvedURLs(for: $0) } ?? []
+        let primaryURL = resolvedURLs.first
+        let broken = item != nil && resolvedURLs.isEmpty
+        // any file in the bundle that fails to resolve makes Locate… available, even when others resolve.
+        let hasBrokenFiles = item.map { resolvedURLs.count < $0.files.count } ?? false
 
         Group {
             if let item {
                 OccupiedSlotView(
                     index: index,
                     item: item,
-                    url: url,
+                    resolvedURLs: resolvedURLs,
+                    primaryURL: primaryURL,
                     broken: broken,
+                    hasBrokenFiles: hasBrokenFiles,
                     isHovering: isHovering,
                     onOpen: { ShelfActions.open(item, store: store) },
                     onRemove: { store.remove(slot: index) },
                     onReveal: { ShelfActions.reveal(item, store: store) },
                     onCopyPath: { ShelfActions.copyPath(item, store: store) },
+                    onCopy: { ShelfActions.copyToClipboard(item, store: store) },
+                    onFill: { ShelfActions.fillFromClipboard(slot: index, store: store, uiState: uiState) },
                     onLocate: { ShelfActions.locate(item, store: store) },
+                    resolveFile: { store.resolvedURL(for: $0) },
                     setPreviewing: { uiState.isPreviewing = $0 }
                 )
             } else {
-                EmptySlotView(isHovering: isHovering) {
-                    ShelfActions.addViaOpenPanel(preferredSlot: index, store: store, uiState: uiState)
-                }
+                EmptySlotView(
+                    isHovering: isHovering,
+                    onAdd: { ShelfActions.addViaOpenPanel(preferredSlot: index, store: store, uiState: uiState) },
+                    onFill: { ShelfActions.fillFromClipboard(slot: index, store: store, uiState: uiState) }
+                )
             }
         }
         .frame(width: ShelfLayout.slotSize, height: ShelfLayout.slotSize)
@@ -76,10 +86,11 @@ struct SlotView: View {
 
 private struct EmptySlotView: View {
     let isHovering: Bool
-    let action: () -> Void
+    let onAdd: () -> Void
+    let onFill: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: onAdd) {
             RoundedRectangle(cornerRadius: ShelfLayout.slotCornerRadius, style: .continuous)
                 .fill(.white.opacity(isHovering ? 0.16 : 0.08))
                 .overlay {
@@ -95,6 +106,10 @@ private struct EmptySlotView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Add item")
+        .contextMenu {
+            Button("Fill from Clipboard") { onFill() }
+            Button("Add File…") { onAdd() }
+        }
     }
 }
 
@@ -103,14 +118,19 @@ private struct EmptySlotView: View {
 private struct OccupiedSlotView: View {
     let index: Int
     let item: ShelfItem
-    let url: URL?
+    let resolvedURLs: [URL]
+    let primaryURL: URL?
     let broken: Bool
+    let hasBrokenFiles: Bool
     let isHovering: Bool
     let onOpen: () -> Void
     let onRemove: () -> Void
     let onReveal: () -> Void
     let onCopyPath: () -> Void
+    let onCopy: () -> Void
+    let onFill: () -> Void
     let onLocate: () -> Void
+    let resolveFile: (ShelfFile) -> URL?
     let setPreviewing: (Bool) -> Void
 
     @State private var previewInfo: PreviewInfo?
@@ -118,41 +138,49 @@ private struct OccupiedSlotView: View {
     @State private var loadTask: Task<Void, Never>?
     @State private var dismissTask: Task<Void, Never>?
 
+    private var isBundle: Bool {
+        item.files.count > 1
+    }
+
     var body: some View {
-        Button(action: onOpen) {
-            VStack(spacing: 4) {
-                Image(nsImage: IconProvider.icon(for: url, broken: broken, size: ShelfLayout.iconSize))
-                    .resizable()
-                    .frame(width: ShelfLayout.iconSize, height: ShelfLayout.iconSize)
-                Text(item.displayName)
-                    .font(.caption2)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .foregroundStyle(.white.opacity(0.85))
+        ZStack {
+            content
+                // a multi-file bundle drives clicks + drag through the AppKit drag source overlay, so the
+                // visual content must not eat the events itself.
+                .allowsHitTesting(!isBundle)
+            if isBundle, !broken {
+                SlotBundleDragSource(urls: resolvedURLs, sourceSlot: index, onClick: onOpen)
             }
-            .padding(.horizontal, 6)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background {
-                RoundedRectangle(cornerRadius: ShelfLayout.slotCornerRadius, style: .continuous)
-                    .fill(.white.opacity(isHovering ? 0.16 : 0))
-            }
-            .opacity(broken ? 0.5 : 1)
         }
-        .buttonStyle(.plain)
-        .disabled(broken)
         .accessibilityLabel(broken ? "\(item.displayName), missing" : "Open \(item.displayName)")
-        .onDrag { dragProvider() }
         .contextMenu {
-            if broken {
-                Button("Locate…") { onLocate() }
-                Divider()
-            } else {
+            // when at least one file resolves, keep the normal actions; offer Locate… whenever any file
+            // is broken so a partially-broken bundle can repair its missing entry (spec §33, §38.1).
+            if !broken {
                 Button("Open") { onOpen() }
                 Button("Reveal in Finder") { onReveal() }
                 Button("Copy Path") { onCopyPath() }
-                Divider()
+                Button("Copy to Clipboard") { onCopy() }
+                Button("Fill from Clipboard") { onFill() }
             }
+            if hasBrokenFiles {
+                Button("Locate…") { onLocate() }
+            }
+            Divider()
             Button("Remove from Shelf", role: .destructive) { onRemove() }
+        }
+        .overlay(alignment: .topLeading) {
+            if isHovering, !broken {
+                Button(action: onCopy) {
+                    Image(systemName: "doc.on.clipboard.fill")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, .black.opacity(0.55))
+                        .font(.body)
+                }
+                .buttonStyle(.plain)
+                .padding(5)
+                .accessibilityLabel("Copy \(item.displayName) to clipboard")
+            }
         }
         .overlay(alignment: .topTrailing) {
             if isHovering {
@@ -168,20 +196,51 @@ private struct OccupiedSlotView: View {
             }
         }
         .popover(item: $previewInfo, arrowEdge: .bottom) { info in
-            ShelfPreviewView(info: info)
+            ShelfPreviewView(info: info, onOpen: { ShelfActions.openURL($0) }, onCopy: onCopy)
                 .onHover { hovered in
                     previewHovered = hovered
                     if hovered { dismissTask?.cancel() } else { scheduleDismiss() }
                 }
         }
         .onChange(of: isHovering) { _, hovering in
-            if hovering, !broken, url != nil {
+            if hovering, !broken, primaryURL != nil {
                 startPreviewLoad()
             } else {
                 loadTask?.cancel()
                 scheduleDismiss()
             }
         }
+    }
+
+    /// the slot visual: stacked icons + count badge for a bundle, a plain icon for a single file. a
+    /// single-file slot keeps the SwiftUI button + `.onDrag` path so it behaves exactly as before.
+    @ViewBuilder private var content: some View {
+        if isBundle {
+            slotBody
+        } else {
+            Button(action: onOpen) { slotBody }
+                .buttonStyle(.plain)
+                .disabled(broken)
+                .onDrag { dragProvider() }
+        }
+    }
+
+    private var slotBody: some View {
+        VStack(spacing: 4) {
+            SlotIconStack(urls: resolvedURLs, fileCount: item.files.count)
+            Text(item.displayName)
+                .font(.caption2)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .foregroundStyle(.white.opacity(0.85))
+        }
+        .padding(.horizontal, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: ShelfLayout.slotCornerRadius, style: .continuous)
+                .fill(.white.opacity(isHovering ? 0.16 : 0))
+        }
+        .opacity(broken ? 0.5 : 1)
     }
 
     /// loads the preview after a short hover delay, then presents it (item-based popover, so it never
@@ -191,9 +250,23 @@ private struct OccupiedSlotView: View {
         loadTask?.cancel()
         loadTask = Task {
             try? await Task.sleep(for: .milliseconds(500))
-            guard !Task.isCancelled, let url else { return }
-            let icon = IconProvider.icon(for: url, broken: false, size: 28)
-            let info = await PreviewLoader.load(url: url, kind: item.kind, name: item.displayName, icon: icon)
+            guard !Task.isCancelled, let primaryURL else { return }
+            let info: PreviewInfo
+            if isBundle {
+                // pair every still-resolving file with its url, in bundle order, for the file list.
+                let entries = item.files.compactMap { file in
+                    resolveFile(file).map { (file: file, url: $0) }
+                }
+                info = PreviewLoader.loadBundle(name: item.displayName, entries: entries)
+            } else {
+                let icon = IconProvider.icon(for: primaryURL, broken: false, size: 28)
+                info = await PreviewLoader.load(
+                    url: primaryURL,
+                    kind: item.kind,
+                    name: item.displayName,
+                    icon: icon
+                )
+            }
             guard !Task.isCancelled else { return }
             previewInfo = info
             setPreviewing(true)
@@ -211,10 +284,10 @@ private struct OccupiedSlotView: View {
         }
     }
 
-    /// drag-out provides the real file url (so Finder/other apps receive the actual file) plus a
+    /// single-file drag-out: the real file url (so Finder/other apps receive the actual file) plus a
     /// private payload tagging the source slot for internal rearranging; broken items do not drag.
     private func dragProvider() -> NSItemProvider {
-        guard !broken, let url else { return NSItemProvider() }
+        guard !broken, let url = primaryURL else { return NSItemProvider() }
         let provider = NSItemProvider(contentsOf: url) ?? NSItemProvider(object: url as NSURL)
         provider.registerDataRepresentation(forTypeIdentifier: SlotDrag.typeID, visibility: .ownProcess) { completion in
             completion(SlotDrag.data(for: index), nil)
@@ -227,7 +300,7 @@ private struct OccupiedSlotView: View {
 // MARK: - SlotDropDelegate
 
 /// distinguishes an internal rearrange (carries the private SlotDrag type → swap) from an external
-/// file drop (→ add), and drives the drag-over highlight (spec §7, §11, §16).
+/// file drop (→ a single bundle in this slot, falling forward when occupied) (spec §7, §11, §14, §16).
 private struct SlotDropDelegate: DropDelegate {
     let index: Int
     let store: ShelfStore
@@ -258,7 +331,7 @@ private struct SlotDropDelegate: DropDelegate {
             }
             return true
         }
-        ShelfActions.dropFiles(providers, preferredSlot: index, store: store, uiState: uiState)
+        ShelfActions.dropBundle(providers, preferredSlot: index, store: store, uiState: uiState)
         return true
     }
 }

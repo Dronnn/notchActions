@@ -10,10 +10,12 @@ import SwiftUI
 
 // MARK: - ShelfPreviewView
 
-/// the hover-preview popover: a thumbnail, a scrollable text snippet, or a folder info table, with a
-/// small icon + name header (spec §20). text is scrollable so it can be read in place.
+/// the hover-preview popover: a clickable thumbnail, a scrollable text snippet, a folder info table, or
+/// a list of a bundle's files; with a top-right copy button (spec §20, §20.6). text/list scroll in place.
 struct ShelfPreviewView: View {
     let info: PreviewInfo
+    let onOpen: (URL) -> Void
+    let onCopy: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -27,12 +29,20 @@ struct ShelfPreviewView: View {
                     .font(.headline)
                     .lineLimit(1)
             }
-            if let thumbnail = info.thumbnail {
-                Image(nsImage: thumbnail)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 360, maxHeight: 280)
-                    .clipShape(.rect(cornerRadius: 8))
+            if !info.files.isEmpty {
+                BundleFileList(files: info.files, onOpen: onOpen)
+            } else if let thumbnail = info.thumbnail {
+                Button {
+                    if let url = info.previewURL { onOpen(url) }
+                } label: {
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 360, maxHeight: 280)
+                        .clipShape(.rect(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open \(info.name)")
             } else if let snippet = info.textSnippet, !snippet.isEmpty {
                 ScrollView {
                     Text(snippet)
@@ -60,5 +70,56 @@ struct ShelfPreviewView: View {
         }
         .padding(16)
         .frame(minWidth: 300, maxWidth: 440)
+        .overlay(alignment: .topTrailing) {
+            Button(action: onCopy) {
+                Image(systemName: "doc.on.clipboard.fill")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, .black.opacity(0.55))
+                    .font(.body)
+            }
+            .buttonStyle(.plain)
+            .padding(8)
+            .accessibilityLabel("Copy \(info.name) to clipboard")
+        }
+    }
+}
+
+// MARK: - BundleFileList
+
+/// a scrollable list of a bundle's files; each row is a button that opens that one file (spec §20.6).
+private struct BundleFileList: View {
+    let files: [PreviewFileEntry]
+    let onOpen: (URL) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(files) { file in
+                    Button {
+                        onOpen(file.url)
+                    } label: {
+                        HStack(spacing: 8) {
+                            if let icon = file.icon {
+                                Image(nsImage: icon)
+                                    .resizable()
+                                    .frame(width: 24, height: 24)
+                            }
+                            Text(file.name)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer(minLength: 0)
+                        }
+                        .font(.callout)
+                        .contentShape(.rect)
+                        .padding(.vertical, 3)
+                        .padding(.horizontal, 6)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Open \(file.name)")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: 380, maxHeight: 280)
     }
 }

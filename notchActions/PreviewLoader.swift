@@ -18,6 +18,16 @@ struct PreviewRow: Identifiable, Equatable {
     let value: String
 }
 
+// MARK: - PreviewFileEntry
+
+/// one listed file inside a bundle preview: an icon, a name, and the live url so a row can open it (spec §20.6).
+struct PreviewFileEntry: Identifiable, Equatable {
+    let id = UUID()
+    var icon: NSImage?
+    var name: String
+    var url: URL
+}
+
 // MARK: - PreviewInfo
 
 struct PreviewInfo: Identifiable, Equatable {
@@ -27,12 +37,16 @@ struct PreviewInfo: Identifiable, Equatable {
     var name: String
     var textSnippet: String?
     var rows: [PreviewRow]
+    /// the single file the thumbnail/snippet describes, so clicking the image opens it (spec §20.6).
+    var previewURL: URL?
+    /// non-empty only for a multi-file bundle; each row opens its own file (spec §20.6).
+    var files: [PreviewFileEntry] = []
 }
 
 // MARK: - PreviewLoader
 
 /// builds a hover preview: a Quick Look thumbnail for files, a scrollable snippet for text/markdown,
-/// or an info table for folders; plus name + kind + size/items + modified date (spec §20, §37.9, §42).
+/// or an info table for folders; a multi-file bundle lists its files instead (spec §20, §20.6, §37.9, §42).
 @MainActor
 enum PreviewLoader {
     static func load(url: URL, kind: ShelfItemKind, name: String, icon: NSImage) async -> PreviewInfo {
@@ -64,7 +78,27 @@ enum PreviewLoader {
         let snippet = (kind == .markdownNote || isText) ? textSnippet(for: url) : nil
         // folders show the info table + small icon; text shows a scrollable snippet; else a thumbnail.
         let thumbnail = (isDirectory || snippet != nil) ? nil : await makeThumbnail(for: url)
-        return PreviewInfo(icon: icon, thumbnail: thumbnail, name: name, textSnippet: snippet, rows: rows)
+        return PreviewInfo(
+            icon: icon,
+            thumbnail: thumbnail,
+            name: name,
+            textSnippet: snippet,
+            rows: rows,
+            previewURL: url
+        )
+    }
+
+    /// a multi-file bundle preview: just a header + a list of files (icon + name), each opening its own
+    /// file. `entries` pairs every still-resolving bundle file with its live url, in bundle order (spec §20.6).
+    static func loadBundle(name: String, entries: [(file: ShelfFile, url: URL)]) -> PreviewInfo {
+        let files = entries.map { entry in
+            PreviewFileEntry(
+                icon: IconProvider.icon(for: entry.url, broken: false, size: 24),
+                name: entry.file.displayName,
+                url: entry.url
+            )
+        }
+        return PreviewInfo(icon: nil, thumbnail: nil, name: name, textSnippet: nil, rows: [], files: files)
     }
 
     private static func makeThumbnail(for url: URL) async -> NSImage? {

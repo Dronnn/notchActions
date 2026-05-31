@@ -25,26 +25,34 @@ enum ClipboardError: Error {
 @MainActor
 enum ClipboardMarkdownService {
     static func makeNote(addingTo store: ShelfStore) -> Result<Int, ClipboardError> {
-        guard let text = clipboardText(), !text.isEmpty else {
-            return .failure(.empty)
-        }
-        // check for a free slot before writing the file, so a full shelf never leaves an orphan note.
-        guard store.firstEmptySlot != nil else {
+        // pick the free slot before writing the file, so a full shelf never leaves an orphan note.
+        guard let slot = store.firstEmptySlot else {
             return .failure(.noSlot)
         }
         let url: URL
+        switch writeClipboardNote() {
+        case let .success(written):
+            url = written
+        case let .failure(error):
+            return .failure(error)
+        }
+        store.appendNote(url: url, isAppCreated: true, to: slot)
+        Log.clipboard.info("created clipboard note at slot \(slot)")
+        return .success(slot)
+    }
+
+    /// writes the current clipboard to a new app-created .md note in the notes dir and returns its url,
+    /// without touching the shelf; the caller decides which slot it lands in (spec §29.2, §38.3).
+    static func writeClipboardNote() -> Result<URL, ClipboardError> {
+        guard let text = clipboardText(), !text.isEmpty else {
+            return .failure(.empty)
+        }
         do {
-            url = try writeNote(text: text)
+            let url = try writeNote(text: text)
+            return .success(url)
         } catch {
             Log.clipboard.error("clipboard note write failed: \(error.localizedDescription, privacy: .public)")
             return .failure(.writeFailed)
-        }
-        switch store.add(url: url, kind: .markdownNote, preferredSlot: nil) {
-        case let .added(slot):
-            Log.clipboard.info("created clipboard note at slot \(slot)")
-            return .success(slot)
-        case .duplicate, .shelfFull:
-            return .failure(.noSlot)
         }
     }
 

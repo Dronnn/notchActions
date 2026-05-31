@@ -17,11 +17,12 @@ import os
 final class AppController: NSObject, NSApplicationDelegate {
     let store = ShelfStore()
     private let uiState = ShelfUIState()
+    private let layoutConfig = LayoutConfigStore()
     private var shelfWindowController: ShelfWindowController?
 
     func applicationDidFinishLaunching(_: Notification) {
         Log.lifecycle.info("notchActions launched")
         NSApp.setActivationPolicy(.accessory)
-        shelfWindowController = ShelfWindowController(store: store, uiState: uiState)
+        shelfWindowController = ShelfWindowController(store: store, uiState: uiState, layoutConfig: layoutConfig)
     }
 }

@@ -7,6 +7,7 @@
 //
 
 import AppKit
+import Observation
 import SwiftUI
 
 // MARK: - ShelfWindowController
@@ -22,6 +23,7 @@ final class ShelfWindowController {
     private let triggerWindow: NSPanel
     private let store: ShelfStore
     private let uiState: ShelfUIState
+    private let layoutConfig: LayoutConfigStore
 
     private var screenObserver: NSObjectProtocol?
     private var hoverMonitorTask: Task<Void, Never>?
@@ -35,11 +37,15 @@ final class ShelfWindowController {
 
     // MARK: - Lifecycle
 
-    init(store: ShelfStore, uiState: ShelfUIState) {
+    init(store: ShelfStore, uiState: ShelfUIState, layoutConfig: LayoutConfigStore) {
         self.store = store
         self.uiState = uiState
+        self.layoutConfig = layoutConfig
 
-        panel = ShelfPanel(contentRect: Self.panelFrame() ?? CGRect(origin: .zero, size: NotchGeometry.panelSize))
+        let grid = Self.grid(for: layoutConfig.config)
+        store.slotCount = grid.totalSlotCount
+
+        panel = ShelfPanel(contentRect: Self.panelFrame(for: grid) ?? CGRect(origin: .zero, size: grid.panelSize))
         triggerWindow = NSPanel(
             contentRect: Self.triggerFrame() ?? .zero,
             styleMask: [.borderless, .nonactivatingPanel],
@@ -50,6 +56,7 @@ final class ShelfWindowController {
         configurePanel()
         configureTrigger()
         observeScreenChanges()
+        observeLayoutConfig()
         positionWindows()
 
         // start hidden: only the transparent trigger is live, so the app is invisible until the
@@ -70,9 +77,18 @@ final class ShelfWindowController {
     // MARK: - Configuration
 
     private func configurePanel() {
+        rebuildHostedView()
+    }
+
+    /// (re)installs the hosted ShelfView with the current notch width so the rendered grid matches the
+    /// active notch screen; called at launch and whenever the layout or screen geometry changes (spec §10.4).
+    private func rebuildHostedView() {
+        let notchWidth = Self.notchScreen().map { NotchGeometry.notchWidth(for: $0) } ?? 0
         panel.contentView = NSHostingView(rootView: ShelfView(
             store: store,
-            uiState: uiState
+            uiState: uiState,
+            layoutConfig: layoutConfig,
+            notchWidth: notchWidth
         ) { [weak self] in self?.hide() })
     }
 
@@ -184,8 +200,44 @@ final class ShelfWindowController {
     }
 
     private func positionPanel() {
-        guard let frame = Self.panelFrame() else { return }
+        guard let frame = Self.panelFrame(for: activeGrid()) else { return }
         panel.setFrame(frame, display: true)
+    }
+
+    // MARK: - Live layout config
+
+    /// re-arms after each change so the panel re-lays-out and the slot count tracks the grid whenever
+    /// the user edits rows/columns from the gear menu (spec §10.4, §22.5).
+    private func observeLayoutConfig() {
+        withObservationTracking {
+            _ = layoutConfig.config
+        } onChange: {
+            Task { @MainActor [weak self] in
+                self?.applyLayoutConfig()
+            }
+        }
+    }
+
+    private func applyLayoutConfig() {
+        let total = activeGrid().totalSlotCount
+        // an explicit user capacity change can shrink the grid: pull out-of-range items back in before the
+        // slot count drops, so a shrink does not strand items off-screen (spec §10.4, §22.5).
+        store.repack(into: total)
+        store.slotCount = total
+        rebuildHostedView()
+        positionPanel()
+        observeLayoutConfig()
+    }
+
+    private func activeGrid() -> ShelfGrid {
+        Self.grid(for: layoutConfig.config)
+    }
+
+    // MARK: - Geometry
+
+    private static func grid(for config: ShelfLayoutConfig) -> ShelfGrid {
+        let notchWidth = notchScreen().map { NotchGeometry.notchWidth(for: $0) } ?? 0
+        return ShelfGrid(config: config, notchWidth: notchWidth)
     }
 
     private static func metrics() -> NotchMetrics? {
@@ -199,9 +251,9 @@ final class ShelfWindowController {
         NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main
     }
 
-    private static func panelFrame() -> CGRect? {
+    private static func panelFrame(for grid: ShelfGrid) -> CGRect? {
         guard let metrics = metrics() else { return nil }
-        return NotchGeometry.expandedPanelRect(metrics)
+        return NotchGeometry.expandedPanelRect(metrics, panelSize: grid.panelSize)
     }
 
     private static func triggerFrame() -> CGRect? {
@@ -216,8 +268,17 @@ final class ShelfWindowController {
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.positionWindows()
+                self?.applyScreenChange()
             }
         }
+    }
+
+    /// the notch screen (or its notch width) may have changed, so recompute the active grid, refresh the
+    /// slot count and the hosted view's notch width, and reposition. this is NOT a user capacity change,
+    /// so it never repacks items (spec §10.4). the shelf still anchors to the built-in notched display.
+    private func applyScreenChange() {
+        store.slotCount = activeGrid().totalSlotCount
+        rebuildHostedView()
+        positionWindows()
     }
 }
