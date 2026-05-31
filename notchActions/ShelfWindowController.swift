@@ -11,11 +11,11 @@ import SwiftUI
 
 // MARK: - ShelfWindowController
 
-/// owns the expanded shelf panel and the always-on transparent notch trigger, and drives the
-/// hover/drag activation and the debounced collapse (spec §8, §9, §37.2).
-///
-/// the panel is always physically expanded-size, so it never resizes mid-animation; collapse is a
-/// SwiftUI content animation, after which the panel is ordered out so it stops covering the screen.
+/// owns the expanded shelf panel and the always-on transparent notch trigger (spec §8, §9, §37.2).
+/// the trigger expands the shelf on hover or file-drag; while open, a lightweight cursor-position
+/// monitor keeps it open as long as the cursor is over the shelf (or the notch) and collapses it once
+/// the cursor has been away for a short delay. polling the live cursor position is robust during file
+/// drags (where tracking-area enter/exit do not fire) and runs only while open, so idle CPU is unaffected.
 @MainActor
 final class ShelfWindowController {
     private let panel: ShelfPanel
@@ -24,11 +24,13 @@ final class ShelfWindowController {
     private let uiState: ShelfUIState
 
     private var screenObserver: NSObjectProtocol?
-    private var collapseTask: Task<Void, Never>?
+    private var hoverMonitorTask: Task<Void, Never>?
     private var hideTask: Task<Void, Never>?
 
     private static let collapseDelay: Duration = .milliseconds(350)
     private static let hideAfterCollapse: Duration = .milliseconds(420)
+    private static let pollInterval: Duration = .milliseconds(120)
+    private static let keepOpenMargin: CGFloat = 8
 
     // MARK: - Lifecycle
 
@@ -54,7 +56,7 @@ final class ShelfWindowController {
         triggerWindow.orderFrontRegardless()
     }
 
-    // MARK: - Public control (used by the in-shelf menu later)
+    // MARK: - Public control (in-shelf menu)
 
     func show() {
         expand()
@@ -67,19 +69,10 @@ final class ShelfWindowController {
     // MARK: - Configuration
 
     private func configurePanel() {
-        let tracker = MouseTrackingView(acceptsDrag: false)
-        tracker.frame = CGRect(origin: .zero, size: NotchGeometry.panelSize)
-        tracker.onMouseEntered = { [weak self] in self?.expand() }
-        tracker.onMouseExited = { [weak self] in self?.scheduleCollapse() }
-
-        let hosting = NSHostingView(rootView: ShelfView(
+        panel.contentView = NSHostingView(rootView: ShelfView(
             store: store,
             uiState: uiState
         ) { [weak self] in self?.hide() })
-        hosting.frame = tracker.bounds
-        hosting.autoresizingMask = [.width, .height]
-        tracker.addSubview(hosting)
-        panel.contentView = tracker
     }
 
     private func configureTrigger() {
@@ -98,38 +91,52 @@ final class ShelfWindowController {
         let tracker = MouseTrackingView(acceptsDrag: true)
         tracker.onMouseEntered = { [weak self] in self?.expand() }
         tracker.onDragEntered = { [weak self] in self?.expand() }
-        tracker.onDragExited = { [weak self] in self?.scheduleCollapse() }
         triggerWindow.contentView = tracker
     }
 
     // MARK: - Activation
 
     private func expand() {
-        cancelCollapse()
         hideTask?.cancel()
         positionPanel()
         panel.orderFrontRegardless()
         uiState.isExpanded = true
+        startHoverMonitor()
     }
 
-    /// collapse after a short delay once the cursor leaves; cancelled on re-entry, and suppressed
-    /// while a drag is hovering the shelf so it never collapses mid-drop (spec §8.1, §8.2, §22.2).
-    private func scheduleCollapse() {
-        guard !uiState.isDragOver else { return }
-        collapseTask?.cancel()
-        collapseTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.collapseDelay)
-            guard !Task.isCancelled, let self, !uiState.isDragOver else { return }
-            collapseNow()
+    /// keep the shelf open while the live cursor is over the panel (or the notch); collapse once it
+    /// has been away for the delay. works during file drags, and runs only while open (spec §8, §42).
+    private func startHoverMonitor() {
+        hoverMonitorTask?.cancel()
+        hoverMonitorTask = Task { [weak self] in
+            let clock = ContinuousClock()
+            var awaySince: ContinuousClock.Instant?
+            while !Task.isCancelled {
+                guard let self else { return }
+                if cursorIsOverShelf() {
+                    awaySince = nil
+                } else if let since = awaySince {
+                    if clock.now - since >= Self.collapseDelay {
+                        collapseNow()
+                        return
+                    }
+                } else {
+                    awaySince = clock.now
+                }
+                try? await Task.sleep(for: Self.pollInterval)
+            }
         }
     }
 
-    private func cancelCollapse() {
-        collapseTask?.cancel()
-        collapseTask = nil
+    private func cursorIsOverShelf() -> Bool {
+        let cursor = NSEvent.mouseLocation
+        let panelArea = panel.frame.insetBy(dx: -Self.keepOpenMargin, dy: -Self.keepOpenMargin)
+        return panelArea.contains(cursor) || triggerWindow.frame.contains(cursor)
     }
 
     private func collapseNow() {
+        hoverMonitorTask?.cancel()
+        hoverMonitorTask = nil
         uiState.isExpanded = false
         hideTask?.cancel()
         // order the (now invisible) panel out after the collapse animation so it stops covering

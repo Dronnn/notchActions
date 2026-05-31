@@ -19,3 +19,7 @@ Carthage/Build/
 
 # Internal docs (spec + plan)
 docs/
+
+# Local-only (kept on disk, not tracked)
+CLAUDE.md
+logs/

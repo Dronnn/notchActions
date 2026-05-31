@@ -43,10 +43,7 @@ The app runs as a background agent (`LSUIElement`, not sandboxed). After launch,
 
 ## Project layout
 
-- `notchActions/` — app sources (MVVM-ish: `ShelfStore`/`ShelfItem` model, SwiftUI views, AppKit window/trigger layer)
-- `docs/specs.md` — full technical specification
-- `docs/plan.md` — detailed, phased build plan
-- `docs/build-progress.md` — phase checklist; `logs/build-log.md` — build log
+- `notchActions/` — app sources: the `ShelfStore` / `ShelfItem` model, SwiftUI views (`ShelfView`, `SlotView`), and the AppKit window/trigger layer (`ShelfWindowController`, `ShelfPanel`, `NotchGeometry`)
 
 ## License
 
