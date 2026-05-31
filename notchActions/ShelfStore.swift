@@ -160,6 +160,19 @@ final class ShelfStore {
         save()
     }
 
+    /// re-link a (broken) item to a moved file: recreate its bookmark and refresh name/kind (spec §33).
+    func relink(slot: Int, to url: URL) {
+        guard let index = items.firstIndex(where: { $0.slotIndex == slot }) else { return }
+        items[index].bookmarkData = try? BookmarkResolver.makeBookmark(for: url)
+        items[index].originalURLString = url.absoluteString
+        let name = (try? url.resourceValues(forKeys: [.localizedNameKey]).localizedName) ?? url.lastPathComponent
+        items[index].displayName = name
+        items[index].kind = BookmarkResolver.classify(url)
+        items[index].updatedAt = .now
+        Log.persistence.info("relinked slot \(slot)")
+        save()
+    }
+
     // MARK: - Persistence
 
     /// atomic pretty-printed json; never crashes on failure (spec §35, §44).

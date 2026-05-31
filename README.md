@@ -23,8 +23,8 @@ The app is **fully hidden** — no Dock icon and no menu-bar item. Move the curs
 - Drag files, folders, and apps into fixed slots; drag them back out into Finder as real files
 - Persistent shelf (survives quit, restart, reboot) via security-scoped bookmarks — never copies, moves, or deletes your files
 - Rearrange by swapping slots; remove from shelf without touching the original
-- Create a Markdown file from clipboard text, stored locally and added to the shelf
-- Native Finder/Dock icons; graceful broken-item state when a file is moved or deleted
+- Create a Markdown file from clipboard text (plain or rich text), stored locally and added to the shelf
+- Native Finder/Dock icons; broken items show a warning and a right-click "Locate…" to relink a moved file
 - Launch at login (toggle in the gear menu)
 - Hover preview: a Quick Look thumbnail, a scrollable text snippet, or a folder info table — with name, kind, size, and date
 - ⌘V with the shelf open pastes the clipboard into a free slot as a Markdown note

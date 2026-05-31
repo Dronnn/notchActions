@@ -59,6 +59,18 @@ enum ShelfActions {
         pasteboard.setString(url.path(percentEncoded: false), forType: .string)
     }
 
+    /// re-link a broken item to a moved file via an open panel (spec §33).
+    static func locate(_ item: ShelfItem, store: ShelfStore) {
+        NSApp.activate(ignoringOtherApps: true)
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.resolvesAliases = true
+        guard panel.runModal() == .OK, let url = panel.urls.first else { return }
+        store.relink(slot: item.slotIndex, to: url)
+    }
+
     /// external file drop → add to the shelf, filling forward from the target slot (spec §7, §14).
     static func dropFiles(
         _ providers: [NSItemProvider],

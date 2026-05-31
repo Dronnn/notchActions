@@ -25,7 +25,7 @@ enum ClipboardError: Error {
 @MainActor
 enum ClipboardMarkdownService {
     static func makeNote(addingTo store: ShelfStore) -> Result<Int, ClipboardError> {
-        guard let text = NSPasteboard.general.string(forType: .string), !text.isEmpty else {
+        guard let text = clipboardText(), !text.isEmpty else {
             return .failure(.empty)
         }
         // check for a free slot before writing the file, so a full shelf never leaves an orphan note.
@@ -46,6 +46,27 @@ enum ClipboardMarkdownService {
         case .duplicate, .shelfFull:
             return .failure(.noSlot)
         }
+    }
+
+    /// plain text if present, otherwise rich text (rtf/html) flattened to plain text (spec §18).
+    private static func clipboardText() -> String? {
+        let pasteboard = NSPasteboard.general
+        if let string = pasteboard.string(forType: .string), !string.isEmpty {
+            return string
+        }
+        if
+            let rtf = pasteboard.data(forType: .rtf),
+            let attributed = NSAttributedString(rtf: rtf, documentAttributes: nil)
+        {
+            return attributed.string
+        }
+        if
+            let html = pasteboard.data(forType: .html),
+            let attributed = NSAttributedString(html: html, documentAttributes: nil)
+        {
+            return attributed.string
+        }
+        return nil
     }
 
     /// writes utf-8, preserves line breaks, atomic; names like "Clipboard Note 2026-05-31 14-30.md"

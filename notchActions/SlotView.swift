@@ -38,6 +38,7 @@ struct SlotView: View {
                     onRemove: { store.remove(slot: index) },
                     onReveal: { ShelfActions.reveal(item, store: store) },
                     onCopyPath: { ShelfActions.copyPath(item, store: store) },
+                    onLocate: { ShelfActions.locate(item, store: store) },
                     setPreviewing: { uiState.isPreviewing = $0 }
                 )
             } else {
@@ -109,6 +110,7 @@ private struct OccupiedSlotView: View {
     let onRemove: () -> Void
     let onReveal: () -> Void
     let onCopyPath: () -> Void
+    let onLocate: () -> Void
     let setPreviewing: (Bool) -> Void
 
     @State private var previewInfo: PreviewInfo?
@@ -141,7 +143,10 @@ private struct OccupiedSlotView: View {
         .accessibilityLabel(broken ? "\(item.displayName), missing" : "Open \(item.displayName)")
         .onDrag { dragProvider() }
         .contextMenu {
-            if !broken {
+            if broken {
+                Button("Locate…") { onLocate() }
+                Divider()
+            } else {
                 Button("Open") { onOpen() }
                 Button("Reveal in Finder") { onReveal() }
                 Button("Copy Path") { onCopyPath() }
