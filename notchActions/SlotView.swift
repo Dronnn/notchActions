@@ -216,13 +216,18 @@ private struct OccupiedSlotView: View {
                 .onHover { buttonHovered = $0 }
             }
         }
-        .popover(item: $previewInfo, arrowEdge: .bottom) { info in
-            ShelfPreviewView(info: info, onOpen: { ShelfActions.openURL($0) }, onCopy: onCopy)
-                .onHover { hovered in
-                    previewHovered = hovered
-                    if hovered { dismissTask?.cancel() } else { scheduleDismiss() }
-                }
-        }
+        .background(
+            // a custom .applicationDefined NSPopover that does not steal the first outside mouse-down, so
+            // a slot stays draggable while the preview is open (spec §20). hover-to-scroll still works.
+            PreviewPopover(
+                info: previewInfo,
+                onOpen: { ShelfActions.openURL($0) },
+                onCopy: onCopy
+            ) { hovered in
+                previewHovered = hovered
+                if hovered { dismissTask?.cancel() } else { scheduleDismiss() }
+            }
+        )
         .onChange(of: isHovering) { _, hovering in
             // never show a preview while a drag is in progress or while the cursor is over a button.
             if hovering, !broken, !isDragging, !buttonHovered, primaryURL != nil {

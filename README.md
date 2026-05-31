@@ -13,10 +13,10 @@ The app is **fully hidden** — no Dock icon and no menu-bar item. Move the curs
 - **Open:** single-click an item to open the file, launch the app, or open the folder in Finder. For a bundle, every file opens.
 - **Copy:** the **clipboard** button at a slot's top-left (on hover) copies the item's content to the clipboard — text notes as text, images as images, anything else as a file reference — ready to paste into another app. For a bundle it copies every file.
 - **Drag out:** drag an item from the shelf into Finder or another app — it lands as the real file (every file, for a bundle) and stays on the shelf.
-- **Rearrange:** drag one slot onto another to swap.
+- **Rearrange:** drag one slot onto another to swap — works even while a preview is open.
 - **Remove:** the **−** button on hover, or right-click ▸ *Remove from Shelf* (the files stay on disk).
 - **Right-click a slot** for Open / Reveal in Finder / Copy Path / Copy to Clipboard / Fill from Clipboard / Remove. Right-click an empty slot for Fill from Clipboard / Add File. A broken item offers Locate… / Remove.
-- **Hover preview:** a small popover with a Quick Look thumbnail, a text snippet, or a folder info table — for a bundle, a list of its files. The thumbnail and each list row are clickable to open that file, and a copy button at the top-right copies the item.
+- **Hover preview:** a small popover with a Quick Look thumbnail (PDFs, images, Pages / Office docs, video…), a scrollable text snippet for text files, or a folder info table — for a bundle, a list of its files. The thumbnail and each list row are clickable to open that file, and a copy button at the top-right copies the item. Starting a drag dismisses it, so it never blocks rearranging slots.
 - **Menu / Quit:** the **gear** control in the shelf — Paste Clipboard as Markdown, Clear Shelf, Clear Cache, Hide Shelf, Configure Layout…, Open at Login, Quit. **Clear Cache** deletes the Markdown notes the app created from your clipboard and removes them from the shelf; **Clear Shelf** only drops the shelf's references and leaves every file on disk.
 
 ## Features
