@@ -60,9 +60,11 @@ private struct ShelfPanelContent: View {
 
     var body: some View {
         ShelfGridRows(grid: grid, store: store, uiState: uiState)
-            // reserve the notch clearance entirely at the top so the top row sits flush under the
-            // notch and the gear (overlaid below the same clearance) fills the center gap (spec §10.5.2).
-            .padding(.top, ShelfLayout.notchClearance)
+            // reserve the notch clearance at the top so the top row sits flush under the notch. when the
+            // notch gap is wide enough the gear (overlaid below the same clearance) fills the center gap
+            // and the band is 0, so this is unchanged. when the gap is too narrow, an extra band pushes the
+            // grid further down and the gear sits in that dedicated band, never over a slot (spec §10.5.2).
+            .padding(.top, ShelfLayout.notchClearance + grid.controlsBandHeight)
             .padding(ShelfLayout.padding)
             .frame(width: grid.panelSize.width, height: grid.panelSize.height, alignment: .top)
             .background {

@@ -47,6 +47,10 @@ struct ShelfGrid {
     let skippedCount: Int
     let panelSize: CGSize
 
+    /// extra height reserved above the grid for the center gear + hint when the top-row notch gap is too
+    /// narrow to hold them; 0 when the gap is wide enough (the tuned notched-Mac layout) (spec §10.5.2).
+    let controlsBandHeight: CGFloat
+
     // MARK: - Derived
 
     /// width of the centered spacer between the top row's left and right groups: exactly the block of
@@ -54,8 +58,7 @@ struct ShelfGrid {
     /// on each side, restoring the gaps that flank the block, so both groups stay column-aligned with
     /// the full rows below (spec §10.5.1, §10.5.2).
     var topRowGapWidth: CGFloat {
-        guard skippedCount > 0 else { return 0 }
-        return CGFloat(skippedCount) * ShelfLayout.slotSize + CGFloat(skippedCount - 1) * ShelfLayout.slotGap
+        Self.topRowGapWidth(skippedCount: skippedCount)
     }
 
     // MARK: - Init
@@ -66,15 +69,26 @@ struct ShelfGrid {
         let counts = config.rowColumnCounts
         let skipped = Self.skippedCount(topColumns: counts.first ?? 0, notchWidth: notchWidth)
         let built = Self.makeRows(counts: counts, skippedCount: skipped)
+        // the gap holds the controls only when it is wide enough; otherwise a dedicated band is reserved.
+        let band = Self.topRowGapWidth(skippedCount: skipped) >= ShelfLayout.controlsMinGapWidth
+            ? 0
+            : ShelfLayout.controlsBandHeight
 
         self.config = config
         skippedCount = skipped
         rows = built.rows
         totalSlotCount = built.totalSlotCount
-        panelSize = Self.panelSize(counts: counts)
+        controlsBandHeight = band
+        panelSize = Self.panelSize(counts: counts, controlsBandHeight: band)
     }
 
     // MARK: - Math
+
+    /// width of the centered spacer between the top row's left and right groups for a given skip count.
+    private static func topRowGapWidth(skippedCount: Int) -> CGFloat {
+        guard skippedCount > 0 else { return 0 }
+        return CGFloat(skippedCount) * ShelfLayout.slotSize + CGFloat(skippedCount - 1) * ShelfLayout.slotGap
+    }
 
     /// number of top-row center columns hidden under the notch, kept centered (spec §10.5.1). the gap is
     /// only centered when the skipped count shares the top row's parity, so when the raw skip and
@@ -122,8 +136,9 @@ struct ShelfGrid {
         return (rows, nextSlot)
     }
 
-    /// the widest row drives the width; rows plus row gaps drive the height (spec §10.5.2).
-    private static func panelSize(counts: [Int]) -> CGSize {
+    /// the widest row drives the width; rows plus row gaps drive the height, plus the controls band when
+    /// the notch gap is too narrow to hold the gear + hint (spec §10.5.2).
+    private static func panelSize(counts: [Int], controlsBandHeight: CGFloat) -> CGSize {
         let maxColumns = counts.max() ?? 0
         let rowCount = counts.count
         let contentWidth = CGFloat(maxColumns) * ShelfLayout.slotSize
@@ -132,7 +147,7 @@ struct ShelfGrid {
             + CGFloat(max(0, rowCount - 1)) * ShelfLayout.rowGap
         return CGSize(
             width: contentWidth + ShelfLayout.padding * 2,
-            height: contentHeight + ShelfLayout.padding * 2 + ShelfLayout.notchClearance
+            height: contentHeight + ShelfLayout.padding * 2 + ShelfLayout.notchClearance + controlsBandHeight
         )
     }
 }

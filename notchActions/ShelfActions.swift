@@ -141,8 +141,11 @@ enum ShelfActions {
             }
             Log.dragdrop.info("bundle drop completed with \(urls.count) item(s)")
             switch store.addBundle(urls: urls, preferredSlot: preferredSlot) {
-            case .added:
-                break
+            case let .added(_, firstDuplicateSlot):
+                // a drop that mixed new and already-shelved files still flashes the existing slot.
+                if let firstDuplicateSlot {
+                    uiState.flash(slot: firstDuplicateSlot)
+                }
             case let .duplicate(existingSlot):
                 uiState.flash(slot: existingSlot)
             case .shelfFull:
@@ -236,17 +239,21 @@ enum ShelfActions {
         guard
             let values = try? url.resourceValues(forKeys: [.isSymbolicLinkKey, .isRegularFileKey])
         else { return false }
-        return values.isRegularFile == true && values.isSymbolicLink != true
+        return values.isRegularFile == true && values.isSymbolicLink == false
     }
 
     /// true when every path component from the notes dir up to and including the support root is a real
     /// (non-symlink) entry; uses no-follow resourceValues so it never resolves a link before checking it.
+    /// fails closed: unreadable metadata counts as unsafe, so a component is only accepted when the lookup
+    /// succeeds and explicitly reports isSymbolicLink == false.
     private static func ancestorChainIsUnlinked(_ notesDir: URL) -> Bool {
         let root = AppPaths.supportDir.standardizedFileURL
         var current = notesDir.standardizedFileURL
         while true {
-            let isLink = (try? current.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) ?? false
-            if isLink { return false }
+            guard
+                let isLink = try? current.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink,
+                isLink == false
+            else { return false }
             if current.path(percentEncoded: false) == root.path(percentEncoded: false) { return true }
             let parent = current.deletingLastPathComponent().standardizedFileURL
             // stop if we have climbed above the root without matching it, or cannot ascend further.
@@ -265,6 +272,6 @@ enum ShelfActions {
         guard
             let values = try? url.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey])
         else { return false }
-        return values.isDirectory == true && values.isSymbolicLink != true
+        return values.isDirectory == true && values.isSymbolicLink == false
     }
 }

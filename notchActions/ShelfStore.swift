@@ -26,6 +26,16 @@ final class ShelfStore {
         case shelfFull
     }
 
+    // MARK: - BundleAddResult
+
+    /// like AddResult, but `.added` also reports the first already-shelved file's slot (if the same drop
+    /// mixed new and duplicate files), so the caller can flash that existing slot (spec §14, §31).
+    enum BundleAddResult: Equatable {
+        case added(slot: Int, firstDuplicateSlot: Int?)
+        case duplicate(existingSlot: Int)
+        case shelfFull
+    }
+
     // MARK: - Slot count
 
     /// number of rendered slots. settable so group B can wire the grid-derived count; the window
@@ -151,12 +161,13 @@ final class ShelfStore {
     /// existing item. when the preferred slot is taken the bundle falls forward to the next empty slot
     /// (spec §14, §38).
     @discardableResult
-    func addBundle(urls: [URL], preferredSlot: Int?) -> AddResult {
+    func addBundle(urls: [URL], preferredSlot: Int?) -> BundleAddResult {
         let deduped = deduplicatedByPath(urls)
         let fresh = deduped.filter { existingItem(for: $0) == nil }
+        let firstDuplicateSlot = deduped.lazy.compactMap { self.existingItem(for: $0)?.slotIndex }.first
         guard !fresh.isEmpty else {
-            if let existing = deduped.lazy.compactMap({ self.existingItem(for: $0) }).first {
-                return .duplicate(existingSlot: existing.slotIndex)
+            if let firstDuplicateSlot {
+                return .duplicate(existingSlot: firstDuplicateSlot)
             }
             return .shelfFull
         }
@@ -167,7 +178,7 @@ final class ShelfStore {
         items.append(item)
         Log.persistence.info("added bundle of \(item.files.count) at slot \(slot)")
         save()
-        return .added(slot: slot)
+        return .added(slot: slot, firstDuplicateSlot: firstDuplicateSlot)
     }
 
     /// drops repeated urls in one drop, keyed by standardized path, preserving first-seen order.

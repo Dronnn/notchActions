@@ -24,6 +24,15 @@ enum ShelfLayout {
     static let notchClearance: CGFloat = 42
     static let panelCornerRadius: CGFloat = 24
 
+    /// the center gear + hint need at least this much horizontal room. when the top-row notch gap is this
+    /// wide the controls sit inside the gap (the tuned notched-Mac layout); when it is narrower they get
+    /// their own band so they never overlap a slot (spec §10.5.2).
+    static let controlsMinGapWidth: CGFloat = 180
+
+    /// height of the dedicated controls band reserved above the grid when the notch gap is too narrow to
+    /// hold the gear + hint; added to the panel height so nothing overlaps.
+    static let controlsBandHeight: CGFloat = 44
+
     /// the expand animation grows the content out from roughly this notch-sized footprint at top-center.
     static let collapsedSize = CGSize(width: 180, height: 30)
 }
