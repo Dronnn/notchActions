@@ -6,10 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		1873CDBD2FCC01BF008BDE18 /* specs.md in Sources */ = {isa = PBXBuildFile; fileRef = 1873CDBC2FCC01B0008BDE18 /* specs.md */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		1873CD922FCC011C008BDE18 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -31,7 +27,6 @@
 		1873CD822FCC011B008BDE18 /* notchActions.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = notchActions.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1873CD912FCC011C008BDE18 /* notchActionsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = notchActionsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1873CD9B2FCC011C008BDE18 /* notchActionsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = notchActionsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		1873CDBC2FCC01B0008BDE18 /* specs.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = specs.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -80,7 +75,6 @@
 		1873CD792FCC011B008BDE18 = {
 			isa = PBXGroup;
 			children = (
-				1873CDBC2FCC01B0008BDE18 /* specs.md */,
 				1873CD842FCC011B008BDE18 /* notchActions */,
 				1873CD942FCC011C008BDE18 /* notchActionsTests */,
 				1873CD9E2FCC011C008BDE18 /* notchActionsUITests */,
@@ -105,6 +99,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1873CDA52FCC011C008BDE18 /* Build configuration list for PBXNativeTarget "notchActions" */;
 			buildPhases = (
+				18AAAA012FCC011B008BDE18 /* Lint & Format */,
 				1873CD7E2FCC011B008BDE18 /* Sources */,
 				1873CD7F2FCC011B008BDE18 /* Frameworks */,
 				1873CD802FCC011B008BDE18 /* Resources */,
@@ -237,12 +232,33 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		18AAAA012FCC011B008BDE18 /* Lint & Format */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Lint & Format";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\nif which swiftformat >/dev/null; then\n  swiftformat \"$SRCROOT\" --config \"$SRCROOT/.swiftformat\"\nelse\n  echo \"warning: swiftformat not installed\"\nfi\nif which swiftlint >/dev/null; then\n  swiftlint --config \"$SRCROOT/.swiftlint.yml\"\nelse\n  echo \"warning: swiftlint not installed\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		1873CD7E2FCC011B008BDE18 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1873CDBD2FCC01BF008BDE18 /* specs.md in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -314,7 +330,7 @@
 				DEVELOPMENT_TEAM = L6SV6573B9;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -378,7 +394,7 @@
 				DEVELOPMENT_TEAM = L6SV6573B9;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -404,20 +420,21 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = L6SV6573B9;
-				ENABLE_APP_SANDBOX = YES;
+				DEVELOPMENT_TEAM = FP287HDXWV;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = notchActions;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = notchActions.mrmaier.com.notchActions;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -439,20 +456,21 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = L6SV6573B9;
-				ENABLE_APP_SANDBOX = YES;
+				DEVELOPMENT_TEAM = FP287HDXWV;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = notchActions;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = notchActions.mrmaier.com.notchActions;
 				PRODUCT_NAME = "$(TARGET_NAME)";

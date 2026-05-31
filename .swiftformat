@@ -1,0 +1,34 @@
+# https://github.com/nicklockwood/SwiftFormat
+
+# file header foramat
+--header "\n {file}\n notchActions\n\n Created by Andreas Maier.\n Copyright © {year} Andreas Maier. All rights reserved.\n"
+
+# options
+--swiftversion 5
+--indent 4
+--decimalgrouping 3,3
+--hexgrouping 4,8
+
+# rules
+--maxwidth 120
+
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--wrapconditions before-first
+
+--closingparen balanced
+
+--funcattributes prev-line
+--typeattributes prev-line
+--varattributes same-line
+
+--stripunusedargs unnamed-only
+
+--wrapternary before-operators
+
+# disabled
+--disable trailingCommas
+
+# excluded folders
+--exclude Pods,Carthage,.build,DerivedData

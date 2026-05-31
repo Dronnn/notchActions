@@ -1,0 +1,34 @@
+//
+//  ShelfLayout.swift
+//  notchActions
+//
+//  Created by Andreas Maier.
+//  Copyright © 2026 Andreas Maier. All rights reserved.
+//
+
+import CoreGraphics
+
+// MARK: - ShelfLayout
+
+/// shared sizing for the U-shaped slot frame (2 left down, 4 across the bottom, 2 right down).
+/// the panel size is derived from these constants so the window always matches the content.
+enum ShelfLayout {
+    static let slotSize: CGFloat = 78
+    static let slotCornerRadius: CGFloat = 16
+    static let iconSize: CGFloat = 40
+    static let slotGap: CGFloat = 8
+    static let rowGap: CGFloat = 8
+    static let padding: CGFloat = 12
+    static let panelCornerRadius: CGFloat = 24
+
+    /// the bottom row is the widest band: left-column bottom + four bottom slots + right-column bottom.
+    static let bottomRowCount = 6
+
+    static var contentWidth: CGFloat {
+        CGFloat(bottomRowCount) * slotSize + CGFloat(bottomRowCount - 1) * slotGap
+    }
+
+    static var panelSize: CGSize {
+        CGSize(width: contentWidth + padding * 2, height: slotSize * 2 + rowGap + padding * 2)
+    }
+}

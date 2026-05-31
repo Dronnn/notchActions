@@ -1,14 +1,14 @@
 //
 //  notchActionsUITestsLaunchTests.swift
-//  notchActionsUITests
+//  notchActions
 //
-//  Created by andreas maier on 5/31/26.
+//  Created by Andreas Maier.
+//  Copyright © 2026 Andreas Maier. All rights reserved.
 //
 
 import XCTest
 
 final class notchActionsUITestsLaunchTests: XCTestCase {
-
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
     }
@@ -18,7 +18,7 @@ final class notchActionsUITestsLaunchTests: XCTestCase {
     }
 
     @MainActor
-    func testLaunch() throws {
+    func testLaunch() {
         let app = XCUIApplication()
         app.launch()
 

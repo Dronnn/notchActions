@@ -1,32 +1,19 @@
 //
-//  notchActionsApp.swift
+//  NotchActionsApp.swift
 //  notchActions
 //
-//  Created by andreas maier on 5/31/26.
+//  Created by Andreas Maier.
+//  Copyright © 2026 Andreas Maier. All rights reserved.
 //
 
 import SwiftUI
-import SwiftData
 
 @main
-struct notchActionsApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+struct NotchActionsApp: App {
+    @NSApplicationDelegateAdaptor(AppController.self) private var appController
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-        .modelContainer(sharedModelContainer)
+        // no visible window: notchActions is a menu-bar utility driven by AppController
+        Settings { EmptyView() }
     }
 }
