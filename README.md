@@ -14,7 +14,7 @@ The app is **fully hidden** — no Dock icon and no menu-bar item. Move the curs
 - **Rearrange:** drag one slot onto another to swap.
 - **Remove:** the **−** button on hover, or right-click ▸ *Remove from Shelf* (the file stays on disk).
 - **Right-click** an item for Open / Reveal in Finder / Copy Path / Remove.
-- **Menu / Quit:** the **gear** control in the shelf — Paste Clipboard as Markdown, Clear Shelf, Hide Shelf, Quit.
+- **Menu / Quit:** the **gear** control in the shelf — Paste Clipboard as Markdown, Clear Shelf, Hide Shelf, Open at Login, Quit.
 
 ## Features
 
@@ -25,6 +25,7 @@ The app is **fully hidden** — no Dock icon and no menu-bar item. Move the curs
 - Rearrange by swapping slots; remove from shelf without touching the original
 - Create a Markdown file from clipboard text, stored locally and added to the shelf
 - Native Finder/Dock icons; graceful broken-item state when a file is moved or deleted
+- Launch at login (toggle in the gear menu)
 
 ## Requirements
 

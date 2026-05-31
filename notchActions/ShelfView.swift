@@ -103,6 +103,8 @@ private struct ShelfCenterControls: View {
                 Button("Clear Shelf") { store.clear() }
                 Button("Hide Shelf") { onHide() }
                 Divider()
+                Toggle("Open at Login", isOn: Binding(get: { LoginItem.isEnabled }, set: { LoginItem.setEnabled($0) }))
+                Divider()
                 Button("Quit notchActions") { ShelfActions.quit() }
             } label: {
                 Image(systemName: "gearshape")
