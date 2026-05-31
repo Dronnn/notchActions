@@ -156,8 +156,14 @@ final class ShelfWindowController {
     }
 
     private static func metrics() -> NotchMetrics? {
-        guard let screen = NSScreen.main else { return nil }
+        guard let screen = notchScreen() else { return nil }
         return NotchGeometry.metrics(for: screen)
+    }
+
+    /// always target the built-in notched display so the shelf stays at the notch no matter how many
+    /// monitors are connected or which one is "main"; fall back to main if there is no physical notch.
+    private static func notchScreen() -> NSScreen? {
+        NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main
     }
 
     private static func panelFrame() -> CGRect? {

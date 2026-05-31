@@ -79,15 +79,15 @@ private struct EmptySlotView: View {
     var body: some View {
         Button(action: action) {
             RoundedRectangle(cornerRadius: ShelfLayout.slotCornerRadius, style: .continuous)
-                .fill(.white.opacity(isHovering ? 0.10 : 0.05))
+                .fill(.white.opacity(isHovering ? 0.16 : 0.08))
                 .overlay {
                     RoundedRectangle(cornerRadius: ShelfLayout.slotCornerRadius, style: .continuous)
-                        .strokeBorder(.white.opacity(isHovering ? 0.35 : 0.18), lineWidth: 1)
+                        .strokeBorder(.white.opacity(isHovering ? 0.6 : 0.32), lineWidth: 1)
                 }
                 .overlay {
                     Image(systemName: "plus")
                         .font(.title)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.9))
                         .scaleEffect(isHovering ? 1.12 : 1)
                 }
         }
@@ -119,13 +119,13 @@ private struct OccupiedSlotView: View {
                     .font(.caption2)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.85))
             }
             .padding(.horizontal, 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
                 RoundedRectangle(cornerRadius: ShelfLayout.slotCornerRadius, style: .continuous)
-                    .fill(.white.opacity(isHovering ? 0.10 : 0))
+                    .fill(.white.opacity(isHovering ? 0.16 : 0))
             }
             .opacity(broken ? 0.5 : 1)
         }

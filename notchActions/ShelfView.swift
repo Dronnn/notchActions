@@ -66,14 +66,13 @@ private struct ShelfPanelContent: View {
         .padding(ShelfLayout.padding)
         .frame(width: ShelfLayout.panelSize.width, height: ShelfLayout.panelSize.height)
         .background {
-            VisualEffectBackground()
-                .overlay(Color.black.opacity(0.85))
-                .clipShape(shelfShape)
+            // plain black so the panel reads as part of the notch (spec §27).
+            shelfShape.fill(.black)
         }
         .overlay {
             shelfShape
                 .strokeBorder(
-                    uiState.isDragOver ? Color.accentColor.opacity(0.8) : .white.opacity(0.12),
+                    uiState.isDragOver ? Color.accentColor.opacity(0.85) : .white.opacity(0.18),
                     lineWidth: uiState.isDragOver ? 2 : 1
                 )
         }
@@ -106,9 +105,9 @@ private struct ShelfCenterControls: View {
                 Divider()
                 Button("Quit notchActions") { ShelfActions.quit() }
             } label: {
-                Image(systemName: "ellipsis.circle")
+                Image(systemName: "gearshape")
                     .font(.title3)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.85))
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
@@ -117,7 +116,7 @@ private struct ShelfCenterControls: View {
 
             Text("Drag files here or press +")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.6))
                 .fixedSize()
                 .opacity(store.items.isEmpty ? 1 : 0)
         }

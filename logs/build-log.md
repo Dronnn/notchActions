@@ -68,6 +68,7 @@ Detailed, as-it-happens log of the build. Plan: `docs/plan.md`. Spec: `docs/spec
   - LOW: trigger reduced to exactly the notch (no downward lip) so it can't swallow clicks just below the notch; added `Log.dragdrop` lines on drop; marked `SlotDrag` static funcs `nonisolated` (called from off-main @Sendable drag closures).
 - Visual tuning per Andrew's on-notch feedback: background to near-black (black overlay 0.35 → 0.85) so it reads as part of the notch; compact sizing (slot 90→78, gaps 12→8, padding 16→12) to reduce free space and pull the slots closer to the notch.
 - Deferred (Andrew-requested, plan-deferred): hover content preview (§20).
+- Polish round 2 (on-notch feedback): panel to **plain black** (solid fill, dropped the blur overlay) to read as part of the notch; brightened glyphs/labels/borders to white-based opacities (were `.secondary`, invisible on black); `•••` → **gear** icon; multi-display fix — the shelf always anchors to the built-in notched screen (`NSScreen.screens.first { safeAreaInsets.top > 0 }`) instead of `NSScreen.main`, so it never opens on an external monitor.
 - BuildProject: green. Relaunched; committed + pushed; README updated.
 
 ## Phases 7-17 — interactions, clipboard, menus, context menu, resilience (build green)
