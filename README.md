@@ -1,4 +1,4 @@
-# NotchShelf
+# notchActions
 
 A native macOS menu-bar utility that turns the MacBook notch into an interactive, persistent, animated shelf.
 
