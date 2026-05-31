@@ -392,7 +392,12 @@ private struct SlotDropDelegate: DropDelegate {
                 return true
             }
             Log.dragdrop.info("internal drop: swap \(source) -> \(index)")
-            store.swap(source, index)
+            // defer the swap to the next main-actor tick so the model mutation lands AFTER the drag session
+            // tears down; otherwise swiftui repaints the slots late (on the next hover) and a stale ghost of
+            // the dragged file lingers on the target slot.
+            let from = source
+            let to = index
+            Task { @MainActor in store.swap(from, to) }
             return true
         }
         let providers = info.itemProviders(for: [.fileURL])
