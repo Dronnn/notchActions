@@ -146,6 +146,7 @@ private struct OccupiedSlotView: View {
 
     @State private var previewInfo: PreviewInfo?
     @State private var previewHovered = false
+    @State private var buttonHovered = false
     @State private var loadTask: Task<Void, Never>?
     @State private var dismissTask: Task<Void, Never>?
 
@@ -196,8 +197,8 @@ private struct OccupiedSlotView: View {
                 .buttonStyle(.plain)
                 .padding(5)
                 .accessibilityLabel("Copy \(item.displayName) to clipboard")
-                // dismiss the popover before the click lands so the first click hits the button.
-                .onHover { hovering in if hovering { dismissPreview() } }
+                // track button hover so the preview hides only while the cursor is over the button.
+                .onHover { buttonHovered = $0 }
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -211,8 +212,8 @@ private struct OccupiedSlotView: View {
                 .buttonStyle(.plain)
                 .padding(5)
                 .accessibilityLabel("Remove \(item.displayName) from shelf")
-                // dismiss the popover before the click lands so the first click hits the button.
-                .onHover { hovering in if hovering { dismissPreview() } }
+                // track button hover so the preview hides only while the cursor is over the button.
+                .onHover { buttonHovered = $0 }
             }
         }
         .popover(item: $previewInfo, arrowEdge: .bottom) { info in
@@ -223,12 +224,22 @@ private struct OccupiedSlotView: View {
                 }
         }
         .onChange(of: isHovering) { _, hovering in
-            // never show a preview while a drag is in progress; the shelf must stay clear for dropping.
-            if hovering, !broken, !isDragging, primaryURL != nil {
+            // never show a preview while a drag is in progress or while the cursor is over a button.
+            if hovering, !broken, !isDragging, !buttonHovered, primaryURL != nil {
                 startPreviewLoad()
             } else {
+                // reset button-hover so it can never get stuck true after the slot loses hover.
+                buttonHovered = false
                 loadTask?.cancel()
                 scheduleDismiss()
+            }
+        }
+        .onChange(of: buttonHovered) { _, over in
+            // hide the preview while over a button (so its click registers first try), restore on return.
+            if over {
+                dismissPreview()
+            } else if isHovering, !broken, primaryURL != nil {
+                startPreviewLoad()
             }
         }
         .onChange(of: isDragging) { _, dragging in
@@ -290,9 +301,9 @@ private struct OccupiedSlotView: View {
         dismissTask?.cancel()
         loadTask?.cancel()
         loadTask = Task {
-            try? await Task.sleep(for: .milliseconds(500))
-            // bail if a drag began during the load delay, so no preview appears mid-drag.
-            guard !Task.isCancelled, !isDragging, let primaryURL else { return }
+            try? await Task.sleep(for: .milliseconds(250))
+            // bail if a drag began or the cursor reached a button during the load delay.
+            guard !Task.isCancelled, !isDragging, !buttonHovered, let primaryURL else { return }
             let info: PreviewInfo
             if isBundle {
                 // pair every still-resolving file with its url, in bundle order, for the file list.
