@@ -62,6 +62,10 @@ struct SlotView: View {
                 )
             }
         }
+        // identity is the slot's current item, so a reorder (item id changes) cross-fades the content; the
+        // id only changes when the item itself changes, never on hover/preview/drag-over updates.
+        .id(item?.id)
+        .transition(.opacity.combined(with: .scale(scale: 0.92)))
         .frame(width: ShelfLayout.slotSize, height: ShelfLayout.slotSize)
         .overlay {
             if uiState.hoveredSlot == index {
@@ -397,7 +401,14 @@ private struct SlotDropDelegate: DropDelegate {
             // the dragged file lingers on the target slot.
             let from = source
             let to = index
-            Task { @MainActor in store.swap(from, to) }
+            // animate the swap so the moved item's content cross-fades into the target slot (and the
+            // swapped item into the source) instead of snapping; paired with the .transition on the
+            // content Group, keyed on item id.
+            Task { @MainActor in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    store.swap(from, to)
+                }
+            }
             return true
         }
         let providers = info.itemProviders(for: [.fileURL])
