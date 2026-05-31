@@ -58,8 +58,6 @@ private struct ShelfPanelContent: View {
             HStack(spacing: ShelfLayout.slotGap) {
                 SlotView(index: 0, store: store, uiState: uiState)
                 Spacer(minLength: ShelfLayout.slotGap)
-                ShelfCenterControls(store: store, uiState: uiState, onHide: onHide)
-                Spacer(minLength: ShelfLayout.slotGap)
                 SlotView(index: 6, store: store, uiState: uiState)
             }
             HStack(spacing: ShelfLayout.slotGap) {
@@ -83,6 +81,11 @@ private struct ShelfPanelContent: View {
         }
         .clipShape(shelfShape)
         .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+        .overlay(alignment: .top) {
+            // gear + hint live in the open center, pushed below the notch so they aren't clipped.
+            ShelfCenterControls(store: store, uiState: uiState, onHide: onHide)
+                .padding(.top, ShelfLayout.notchClearance)
+        }
         .overlay(alignment: .bottom) {
             if uiState.fullShelfToast {
                 FullShelfToast()
