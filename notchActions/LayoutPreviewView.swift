@@ -38,6 +38,9 @@ struct LayoutPreviewView: View {
         }
         .padding(8)
         .background(.black, in: .rect(cornerRadius: 8))
+        // hug the rows so the box can't stretch to fill the space freed when a row is removed; this also
+        // gives the window a definite height to shrink to (spec §10.4).
+        .fixedSize()
     }
 
     // MARK: - Geometry
