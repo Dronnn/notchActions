@@ -19,10 +19,21 @@ final class AppController: NSObject, NSApplicationDelegate {
     private let uiState = ShelfUIState()
     private let layoutConfig = LayoutConfigStore()
     private var shelfWindowController: ShelfWindowController?
+    private var layoutSettingsWindowController: LayoutSettingsWindowController?
 
     func applicationDidFinishLaunching(_: Notification) {
         Log.lifecycle.info("notchActions launched")
         NSApp.setActivationPolicy(.accessory)
-        shelfWindowController = ShelfWindowController(store: store, uiState: uiState, layoutConfig: layoutConfig)
+        // the settings window edits the SAME layout config the shelf observes, so edits persist and the
+        // shelf re-lays-out on its next summon.
+        let settings = LayoutSettingsWindowController(layoutConfig: layoutConfig)
+        layoutSettingsWindowController = settings
+        shelfWindowController = ShelfWindowController(
+            store: store,
+            uiState: uiState,
+            layoutConfig: layoutConfig
+        ) { [weak settings] in
+            settings?.show()
+        }
     }
 }

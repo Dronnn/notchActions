@@ -17,7 +17,7 @@ enum ShelfActions {
     /// plus button → native open panel; first item to preferredSlot, rest fill forward (spec §11).
     static func addViaOpenPanel(preferredSlot: Int?, store: ShelfStore, uiState: ShelfUIState) {
         // the panel is non-activating, so bring the app forward before showing a modal picker
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
@@ -81,7 +81,7 @@ enum ShelfActions {
 
     /// re-link a broken item to a moved file via an open panel (spec §33).
     static func locate(_ item: ShelfItem, store: ShelfStore) {
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = true

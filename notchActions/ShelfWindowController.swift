@@ -24,6 +24,7 @@ final class ShelfWindowController {
     private let store: ShelfStore
     private let uiState: ShelfUIState
     private let layoutConfig: LayoutConfigStore
+    private let onConfigureLayout: () -> Void
 
     private var screenObserver: NSObjectProtocol?
     private var hoverMonitorTask: Task<Void, Never>?
@@ -37,10 +38,16 @@ final class ShelfWindowController {
 
     // MARK: - Lifecycle
 
-    init(store: ShelfStore, uiState: ShelfUIState, layoutConfig: LayoutConfigStore) {
+    init(
+        store: ShelfStore,
+        uiState: ShelfUIState,
+        layoutConfig: LayoutConfigStore,
+        onConfigureLayout: @escaping () -> Void
+    ) {
         self.store = store
         self.uiState = uiState
         self.layoutConfig = layoutConfig
+        self.onConfigureLayout = onConfigureLayout
 
         let grid = Self.grid(for: layoutConfig.config)
         store.slotCount = grid.totalSlotCount
@@ -88,8 +95,10 @@ final class ShelfWindowController {
             store: store,
             uiState: uiState,
             layoutConfig: layoutConfig,
-            notchWidth: notchWidth
-        ) { [weak self] in self?.hide() })
+            notchWidth: notchWidth,
+            onHide: { [weak self] in self?.hide() },
+            onConfigureLayout: onConfigureLayout
+        ))
     }
 
     private func configureTrigger() {

@@ -18,6 +18,7 @@ struct ShelfView: View {
     let layoutConfig: LayoutConfigStore
     let notchWidth: CGFloat
     let onHide: () -> Void
+    let onConfigureLayout: () -> Void
 
     /// rebuilt whenever the observed layout config changes so the shelf re-lays-out live (spec §10.4).
     private var grid: ShelfGrid {
@@ -25,18 +26,24 @@ struct ShelfView: View {
     }
 
     var body: some View {
-        ShelfPanelContent(store: store, uiState: uiState, grid: grid, layoutConfig: layoutConfig, onHide: onHide)
-            // grow out from a notch-sized footprint at top-center to the full shelf, so it reads
-            // like it unrolls from the notch (spec §9).
-            .frame(
-                width: uiState.isExpanded ? grid.panelSize.width : ShelfLayout.collapsedSize.width,
-                height: uiState.isExpanded ? grid.panelSize.height : ShelfLayout.collapsedSize.height,
-                alignment: .top
-            )
-            .clipped()
-            .opacity(uiState.isExpanded ? 1 : 0)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .animation(.spring(response: 0.34, dampingFraction: 0.82), value: uiState.isExpanded)
+        ShelfPanelContent(
+            store: store,
+            uiState: uiState,
+            grid: grid,
+            onHide: onHide,
+            onConfigureLayout: onConfigureLayout
+        )
+        // grow out from a notch-sized footprint at top-center to the full shelf, so it reads
+        // like it unrolls from the notch (spec §9).
+        .frame(
+            width: uiState.isExpanded ? grid.panelSize.width : ShelfLayout.collapsedSize.width,
+            height: uiState.isExpanded ? grid.panelSize.height : ShelfLayout.collapsedSize.height,
+            alignment: .top
+        )
+        .clipped()
+        .opacity(uiState.isExpanded ? 1 : 0)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .animation(.spring(response: 0.34, dampingFraction: 0.82), value: uiState.isExpanded)
     }
 }
 
@@ -46,8 +53,8 @@ private struct ShelfPanelContent: View {
     let store: ShelfStore
     let uiState: ShelfUIState
     let grid: ShelfGrid
-    let layoutConfig: LayoutConfigStore
     let onHide: () -> Void
+    let onConfigureLayout: () -> Void
 
     private var shelfShape: UnevenRoundedRectangle {
         .rect(
@@ -82,8 +89,13 @@ private struct ShelfPanelContent: View {
             .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
             .overlay(alignment: .top) {
                 // gear + hint live in the open center, pushed below the notch so they aren't clipped.
-                ShelfCenterControls(store: store, uiState: uiState, layoutConfig: layoutConfig, onHide: onHide)
-                    .padding(.top, ShelfLayout.notchClearance)
+                ShelfCenterControls(
+                    store: store,
+                    uiState: uiState,
+                    onHide: onHide,
+                    onConfigureLayout: onConfigureLayout
+                )
+                .padding(.top, ShelfLayout.notchClearance)
             }
             .overlay(alignment: .bottom) {
                 if uiState.fullShelfToast {
@@ -165,8 +177,8 @@ private struct ShelfLowerRow: View {
 private struct ShelfCenterControls: View {
     let store: ShelfStore
     let uiState: ShelfUIState
-    let layoutConfig: LayoutConfigStore
     let onHide: () -> Void
+    let onConfigureLayout: () -> Void
 
     var body: some View {
         VStack(spacing: 4) {
@@ -176,9 +188,7 @@ private struct ShelfCenterControls: View {
                 Button("Clear Cache") { ShelfActions.clearCache(store: store) }
                 Button("Hide Shelf") { onHide() }
                 Divider()
-                Menu("Layout") {
-                    LayoutMenuItems(layoutConfig: layoutConfig)
-                }
+                Button("Configure Layout…") { onConfigureLayout() }
                 Divider()
                 Toggle("Open at Login", isOn: Binding(get: { LoginItem.isEnabled }, set: { LoginItem.setEnabled($0) }))
                 Divider()
@@ -201,41 +211,6 @@ private struct ShelfCenterControls: View {
                 .fixedSize()
                 .opacity(store.items.isEmpty ? 1 : 0)
         }
-    }
-}
-
-// MARK: - LayoutMenuItems
-
-/// the gear-menu "Layout" submenu: a row-count stepper plus one column stepper per row, bound to the
-/// observed LayoutConfigStore so each change re-lays-out the shelf live (spec §22.5, §10.4).
-private struct LayoutMenuItems: View {
-    let layoutConfig: LayoutConfigStore
-
-    private var rowCount: Binding<Int> {
-        Binding(
-            get: { layoutConfig.config.rowColumnCounts.count },
-            set: { layoutConfig.setRowCount($0) }
-        )
-    }
-
-    var body: some View {
-        Stepper("Rows", value: rowCount, in: 1 ... 4)
-        // iterate the collection's own indices (always valid) instead of enumerated(), which is not a
-        // RandomAccessCollection on swift 5.9 and so cannot back a ForEach.
-        ForEach(layoutConfig.config.rowColumnCounts.indices, id: \.self) { row in
-            Stepper("Row \(row + 1) columns", value: columnsBinding(forRow: row), in: 1 ... 8)
-        }
-    }
-
-    private func columnsBinding(forRow row: Int) -> Binding<Int> {
-        Binding(
-            // a stale binding can outlive a row-count reduction, so guard the read against the live count.
-            get: {
-                let counts = layoutConfig.config.rowColumnCounts
-                return counts.indices.contains(row) ? counts[row] : 1
-            },
-            set: { layoutConfig.setColumns(forRow: row, to: $0) }
-        )
     }
 }
 

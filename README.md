@@ -7,7 +7,7 @@ The app is **fully hidden** — no Dock icon and no menu-bar item. Move the curs
 ## How it works
 
 - **Summon it:** move the cursor to the notch, or start dragging a file toward the notch — the shelf drops down. It collapses again shortly after the cursor leaves.
-- **Layout:** a configurable grid of slots. The top row wraps the notch — its slots split into a left group and a right group with a centered gap that lines up with the physical notch — and any lower rows run full width. The default is a top row of seven that wraps the notch as two slots on the left and two on the right, plus a full row of six below. Set the number of rows and the slot count of each row from the gear menu's **Layout** submenu; the shelf re-lays-out live.
+- **Layout:** a configurable grid of slots. The top row wraps the notch — its slots split into a left group and a right group with a centered gap that lines up with the physical notch — and any lower rows run full width. The default is a top row of seven that wraps the notch as two slots on the left and two on the right, plus a full row of six below. Choose **Configure Layout…** from the gear menu to open a settings window where you set the number of rows and each row's slot count with **+/−** buttons (the values are also typable), with a live preview of the grid; the shelf re-lays-out as you change it.
 - **Add:** click a slot's **+** for a native open panel, or drag files / folders / apps straight from Finder onto a slot.
 - **Bundles (several files in one slot):** drag more than one file onto a single slot and they stack into a bundle — the slot shows fanned icons with a count badge and an "N items" label. Clicking a bundle opens every file at once; dragging it out hands over all of the files; copying it copies all of them. Right-click ▸ *Fill from Clipboard* appends a clipboard note to the slot's bundle.
 - **Open:** single-click an item to open the file, launch the app, or open the folder in Finder. For a bundle, every file opens.
@@ -17,13 +17,13 @@ The app is **fully hidden** — no Dock icon and no menu-bar item. Move the curs
 - **Remove:** the **−** button on hover, or right-click ▸ *Remove from Shelf* (the files stay on disk).
 - **Right-click a slot** for Open / Reveal in Finder / Copy Path / Copy to Clipboard / Fill from Clipboard / Remove. Right-click an empty slot for Fill from Clipboard / Add File. A broken item offers Locate… / Remove.
 - **Hover preview:** a small popover with a Quick Look thumbnail, a text snippet, or a folder info table — for a bundle, a list of its files. The thumbnail and each list row are clickable to open that file, and a copy button at the top-right copies the item.
-- **Menu / Quit:** the **gear** control in the shelf — Paste Clipboard as Markdown, Clear Shelf, Clear Cache, Hide Shelf, Layout ▸, Open at Login, Quit. **Clear Cache** deletes the Markdown notes the app created from your clipboard and removes them from the shelf; **Clear Shelf** only drops the shelf's references and leaves every file on disk.
+- **Menu / Quit:** the **gear** control in the shelf — Paste Clipboard as Markdown, Clear Shelf, Clear Cache, Hide Shelf, Configure Layout…, Open at Login, Quit. **Clear Cache** deletes the Markdown notes the app created from your clipboard and removes them from the shelf; **Clear Shelf** only drops the shelf's references and leaves every file on disk.
 
 ## Features
 
 - Notch-aligned floating panel with invisible collapsed and expanded states, smooth spring animation
 - Hover and drag-toward-notch activation (drop without clicking first)
-- Configurable grid: 1–4 rows with 1–8 slots each, set from the gear menu's Layout submenu; the top row wraps the notch with a centered gap, and the shelf re-lays-out live
+- Configurable grid: 1–4 rows with 1–8 slots each, set in a Configure Layout… window (opened from the gear menu) with +/− buttons that are also typable and a live preview; the top row wraps the notch with a centered gap, and the shelf re-lays-out live
 - Drag files, folders, and apps into slots; drag them back out into Finder as real files
 - Multi-file bundles: drop several files into one slot for a stacked, badged bundle — click opens all, drag-out hands over all, copy and clipboard act on the whole bundle
 - Copy as real file references from a slot's top-left button or the preview's top-right button — paste into Finder or any app
