@@ -21,6 +21,11 @@ final class ShelfUIState {
     var highlightSlot: Int?
     var fullShelfToast = false
     var isPreviewing = false
+    /// the slot a shelf drag started from, set while an internal slot-to-slot drag is in flight. the drop
+    /// delegate reads it to tell an internal rearrange (swap/move) from an external file drop. it is set
+    /// for both the single-file `.onDrag` and the multi-file bundle's AppKit drag session, so the in-process
+    /// source survives the AppKit→SwiftUI drop bridge (which drops the private pasteboard type).
+    var draggingSourceSlot: Int?
 
     private static let transientDuration: Duration = .milliseconds(1_200)
 

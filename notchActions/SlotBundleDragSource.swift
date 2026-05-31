@@ -19,12 +19,17 @@ struct SlotBundleDragSource: NSViewRepresentable {
     let urls: [URL]
     let sourceSlot: Int
     let onClick: () -> Void
+    /// records this slot as the in-flight drag source when the bundle drag starts and clears it when the
+    /// session ends, so the drop delegate can swap a bundle dropped on another slot (the private SlotDrag
+    /// type does not survive the AppKit→SwiftUI drop bridge).
+    let setDraggingSource: (Int?) -> Void
 
     func makeNSView(context _: Context) -> DragSourceView {
         let view = DragSourceView()
         view.urls = urls
         view.sourceSlot = sourceSlot
         view.onClick = onClick
+        view.setDraggingSource = setDraggingSource
         return view
     }
 
@@ -32,6 +37,7 @@ struct SlotBundleDragSource: NSViewRepresentable {
         view.urls = urls
         view.sourceSlot = sourceSlot
         view.onClick = onClick
+        view.setDraggingSource = setDraggingSource
     }
 
     // MARK: - DragSourceView
@@ -40,6 +46,7 @@ struct SlotBundleDragSource: NSViewRepresentable {
         var urls: [URL] = []
         var sourceSlot = 0
         var onClick: (() -> Void)?
+        var setDraggingSource: ((Int?) -> Void)?
 
         private var mouseDownPoint: NSPoint?
 
@@ -48,6 +55,16 @@ struct SlotBundleDragSource: NSViewRepresentable {
             sourceOperationMaskFor _: NSDraggingContext
         ) -> NSDragOperation {
             [.copy, .generic]
+        }
+
+        /// clear the in-flight source slot once the bundle drag finishes (dropped anywhere or cancelled), so
+        /// it never goes stale and a later external Finder drop is not mistaken for an internal swap.
+        func draggingSession(
+            _: NSDraggingSession,
+            endedAt _: NSPoint,
+            operation _: NSDragOperation
+        ) {
+            setDraggingSource?(nil)
         }
 
         override func mouseDown(with event: NSEvent) {
@@ -86,6 +103,8 @@ struct SlotBundleDragSource: NSViewRepresentable {
                 item.setDraggingFrame(frame, contents: icon)
                 items.append(item)
             }
+            // mark this slot as the drag source so a drop onto another slot swaps/moves the bundle.
+            setDraggingSource?(sourceSlot)
             beginDraggingSession(with: items, event: event, source: self)
         }
 

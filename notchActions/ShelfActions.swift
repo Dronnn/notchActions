@@ -8,6 +8,7 @@
 
 import AppKit
 import os
+import UniformTypeIdentifiers
 
 // MARK: - ShelfActions
 
@@ -68,15 +69,42 @@ enum ShelfActions {
         pasteboard.setString(url.path(percentEncoded: false), forType: .string)
     }
 
-    /// copy the item's resolved file url reference(s) to the pasteboard, uniform for every kind so the
-    /// receiver can paste real files; broken files are skipped (spec §29.1).
+    /// copy the item's CONTENT to the pasteboard: text files (markdown notes included) as their text,
+    /// images as NSImage, and anything else as the file url so the receiver can still paste the file;
+    /// broken files are skipped (spec §29.1).
     static func copyToClipboard(_ item: ShelfItem, store: ShelfStore) {
         let urls = store.resolvedURLs(for: item)
         guard !urls.isEmpty else { return }
+        let objects = urls.compactMap(pasteboardObject(for:))
+        guard !objects.isEmpty else { return }
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.writeObjects(urls.map { $0 as NSURL })
-        Log.lifecycle.info("copied \(urls.count) file url(s) to clipboard")
+        pasteboard.writeObjects(objects)
+        Log.lifecycle.info("copied \(objects.count) item(s) to clipboard")
+    }
+
+    /// the best pasteboard representation of one file's content, read inside its security scope: text as a
+    /// string, images as NSImage, everything else as the file url; nil only when nothing readable resolves.
+    private static func pasteboardObject(for url: URL) -> (any NSPasteboardWriting)? {
+        BookmarkResolver.withAccess(url) { resolved in
+            let contentType = (try? resolved.resourceValues(forKeys: [.contentTypeKey]))?.contentType
+            if
+                let contentType,
+                contentType.conforms(to: .text),
+                let text = try? String(contentsOf: resolved, encoding: .utf8)
+            {
+                return NSString(string: text)
+            }
+            if
+                let contentType,
+                contentType.conforms(to: .image),
+                let image = NSImage(contentsOf: resolved)
+            {
+                return image
+            }
+            // binaries (and anything not readable as text/image) fall back to the file url reference.
+            return resolved as NSURL
+        }
     }
 
     /// re-link a broken item to a moved file via an open panel (spec §33).

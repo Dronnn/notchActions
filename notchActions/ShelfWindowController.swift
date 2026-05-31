@@ -124,6 +124,9 @@ final class ShelfWindowController {
 
     private func expand() {
         hideTask?.cancel()
+        // clear any drag-source left over from a previous open's drag-out, so it can never be mistaken for
+        // an internal rearrange on a later external drop.
+        uiState.draggingSourceSlot = nil
         positionPanel()
         // become key (without activating the app) so cmd-V reaches us while merely hovering.
         panel.makeKeyAndOrderFront(nil)

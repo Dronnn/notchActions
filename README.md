@@ -11,7 +11,7 @@ The app is **fully hidden** — no Dock icon and no menu-bar item. Move the curs
 - **Add:** click a slot's **+** for a native open panel, or drag files / folders / apps straight from Finder onto a slot.
 - **Bundles (several files in one slot):** drag more than one file onto a single slot and they stack into a bundle — the slot shows fanned icons with a count badge and an "N items" label. Clicking a bundle opens every file at once; dragging it out hands over all of the files; copying it copies all of them. Right-click ▸ *Fill from Clipboard* appends a clipboard note to the slot's bundle.
 - **Open:** single-click an item to open the file, launch the app, or open the folder in Finder. For a bundle, every file opens.
-- **Copy:** the **clipboard** button at a slot's top-left (on hover) copies the item — or the whole bundle — as real file references, ready to paste into Finder or any app.
+- **Copy:** the **clipboard** button at a slot's top-left (on hover) copies the item's content to the clipboard — text notes as text, images as images, anything else as a file reference — ready to paste into another app. For a bundle it copies every file.
 - **Drag out:** drag an item from the shelf into Finder or another app — it lands as the real file (every file, for a bundle) and stays on the shelf.
 - **Rearrange:** drag one slot onto another to swap.
 - **Remove:** the **−** button on hover, or right-click ▸ *Remove from Shelf* (the files stay on disk).
@@ -26,7 +26,7 @@ The app is **fully hidden** — no Dock icon and no menu-bar item. Move the curs
 - Configurable grid: 1–4 rows with 1–8 slots each, set in a Configure Layout… window (opened from the gear menu) with +/− buttons that are also typable and a live preview; the top row wraps the notch with a centered gap, and the shelf re-lays-out live
 - Drag files, folders, and apps into slots; drag them back out into Finder as real files
 - Multi-file bundles: drop several files into one slot for a stacked, badged bundle — click opens all, drag-out hands over all, copy and clipboard act on the whole bundle
-- Copy as real file references from a slot's top-left button or the preview's top-right button — paste into Finder or any app
+- Copy a slot's content to the clipboard — text as text, images as images, otherwise a file reference — from its top-left button or the preview's top-right button
 - Persistent shelf (survives quit, restart, reboot) via security-scoped bookmarks — never copies, moves, or deletes your files
 - Rearrange by swapping slots; remove from shelf without touching the originals
 - Create a Markdown file from clipboard text (plain or rich text), stored locally and added to the shelf; Fill from Clipboard targets a specific slot

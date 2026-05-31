@@ -7,6 +7,7 @@
 //
 
 import AppKit
+import os
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -28,6 +29,8 @@ struct SlotView: View {
         let broken = item != nil && resolvedURLs.isEmpty
         // any file in the bundle that fails to resolve makes Locate… available, even when others resolve.
         let hasBrokenFiles = item.map { resolvedURLs.count < $0.files.count } ?? false
+        // true while any slot is being dragged, so no preview pops up and covers the shelf mid-drag.
+        let isDragging = uiState.draggingSourceSlot != nil
 
         Group {
             if let item {
@@ -39,6 +42,7 @@ struct SlotView: View {
                     broken: broken,
                     hasBrokenFiles: hasBrokenFiles,
                     isHovering: isHovering,
+                    isDragging: isDragging,
                     onOpen: { ShelfActions.open(item, store: store) },
                     onRemove: { store.remove(slot: index) },
                     onReveal: { ShelfActions.reveal(item, store: store) },
@@ -47,7 +51,8 @@ struct SlotView: View {
                     onFill: { ShelfActions.fillFromClipboard(slot: index, store: store, uiState: uiState) },
                     onLocate: { ShelfActions.locate(item, store: store) },
                     resolveFile: { store.resolvedURL(for: $0) },
-                    setPreviewing: { uiState.isPreviewing = $0 }
+                    setPreviewing: { uiState.isPreviewing = $0 },
+                    setDraggingSource: { uiState.draggingSourceSlot = $0 }
                 )
             } else {
                 EmptySlotView(
@@ -123,6 +128,9 @@ private struct OccupiedSlotView: View {
     let broken: Bool
     let hasBrokenFiles: Bool
     let isHovering: Bool
+    /// true while any slot drag is in flight; the preview hides for the whole drag so it never covers the
+    /// slots below the dragged one.
+    let isDragging: Bool
     let onOpen: () -> Void
     let onRemove: () -> Void
     let onReveal: () -> Void
@@ -132,6 +140,9 @@ private struct OccupiedSlotView: View {
     let onLocate: () -> Void
     let resolveFile: (ShelfFile) -> URL?
     let setPreviewing: (Bool) -> Void
+    /// records (or clears) the slot a drag started from, so the drop delegate can tell an internal
+    /// rearrange from an external file drop for both single-file and bundle drags.
+    let setDraggingSource: (Int?) -> Void
 
     @State private var previewInfo: PreviewInfo?
     @State private var previewHovered = false
@@ -149,7 +160,12 @@ private struct OccupiedSlotView: View {
                 // visual content must not eat the events itself.
                 .allowsHitTesting(!isBundle)
             if isBundle, !broken {
-                SlotBundleDragSource(urls: resolvedURLs, sourceSlot: index, onClick: onOpen)
+                SlotBundleDragSource(
+                    urls: resolvedURLs,
+                    sourceSlot: index,
+                    onClick: onOpen,
+                    setDraggingSource: setDraggingSource
+                )
             }
         }
         .accessibilityLabel(broken ? "\(item.displayName), missing" : "Open \(item.displayName)")
@@ -180,6 +196,8 @@ private struct OccupiedSlotView: View {
                 .buttonStyle(.plain)
                 .padding(5)
                 .accessibilityLabel("Copy \(item.displayName) to clipboard")
+                // dismiss the popover before the click lands so the first click hits the button.
+                .onHover { hovering in if hovering { dismissPreview() } }
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -193,6 +211,8 @@ private struct OccupiedSlotView: View {
                 .buttonStyle(.plain)
                 .padding(5)
                 .accessibilityLabel("Remove \(item.displayName) from shelf")
+                // dismiss the popover before the click lands so the first click hits the button.
+                .onHover { hovering in if hovering { dismissPreview() } }
             }
         }
         .popover(item: $previewInfo, arrowEdge: .bottom) { info in
@@ -203,13 +223,28 @@ private struct OccupiedSlotView: View {
                 }
         }
         .onChange(of: isHovering) { _, hovering in
-            if hovering, !broken, primaryURL != nil {
+            // never show a preview while a drag is in progress; the shelf must stay clear for dropping.
+            if hovering, !broken, !isDragging, primaryURL != nil {
                 startPreviewLoad()
             } else {
                 loadTask?.cancel()
                 scheduleDismiss()
             }
         }
+        .onChange(of: isDragging) { _, dragging in
+            // any slot drag begins → dismiss the open preview at once so it can't cover lower slots.
+            if dragging {
+                dismissPreview()
+            }
+        }
+    }
+
+    /// immediately tears down the preview (cancels any pending load/dismiss and clears it).
+    private func dismissPreview() {
+        loadTask?.cancel()
+        dismissTask?.cancel()
+        previewInfo = nil
+        setPreviewing(false)
     }
 
     /// the slot visual: stacked icons + count badge for a bundle, a plain icon for a single file. a
@@ -221,7 +256,13 @@ private struct OccupiedSlotView: View {
             Button(action: onOpen) { slotBody }
                 .buttonStyle(.plain)
                 .disabled(broken)
-                .onDrag { dragProvider() }
+                // record the source slot in shared state (the private SlotDrag type does not survive the
+                // swiftui drag->drop bridge), while still returning the real file url so drag-out works.
+                .onDrag {
+                    setDraggingSource(index)
+                    Log.dragdrop.info("slot drag started from \(index)")
+                    return dragProvider()
+                }
         }
     }
 
@@ -250,7 +291,8 @@ private struct OccupiedSlotView: View {
         loadTask?.cancel()
         loadTask = Task {
             try? await Task.sleep(for: .milliseconds(500))
-            guard !Task.isCancelled, let primaryURL else { return }
+            // bail if a drag began during the load delay, so no preview appears mid-drag.
+            guard !Task.isCancelled, !isDragging, let primaryURL else { return }
             let info: PreviewInfo
             if isBundle {
                 // pair every still-resolving file with its url, in bundle order, for the file list.
@@ -323,14 +365,22 @@ private struct SlotDropDelegate: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         uiState.hoveredSlot = nil
         uiState.isDragOver = false
-        let providers = info.itemProviders(for: [.fileURL])
-        if let internalProvider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(SlotDrag.typeID) }) {
-            internalProvider.loadDataRepresentation(forTypeIdentifier: SlotDrag.typeID) { data, _ in
-                guard let data, let source = SlotDrag.index(from: data) else { return }
-                Task { @MainActor in store.swap(source, index) }
+        // an internal slot-to-slot drag is identified by the live source slot in shared UI state, set for
+        // BOTH single-file and bundle drags. the private SlotDrag type does not survive the swiftui (or the
+        // AppKit) drag->drop bridge, so it is only a harmless secondary; draggingSourceSlot is authoritative.
+        if let source = uiState.draggingSourceSlot {
+            uiState.draggingSourceSlot = nil
+            guard source != index else {
+                // dropping a slot onto itself is a no-op.
+                Log.dragdrop.info("internal drop ignored: source == drop slot \(index)")
+                return true
             }
+            Log.dragdrop.info("internal drop: swap \(source) -> \(index)")
+            store.swap(source, index)
             return true
         }
+        let providers = info.itemProviders(for: [.fileURL])
+        Log.dragdrop.info("external drop onto slot \(index)")
         ShelfActions.dropBundle(providers, preferredSlot: index, store: store, uiState: uiState)
         return true
     }
